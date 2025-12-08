@@ -1050,17 +1050,23 @@ function showShareLinks(editionId) {
     // Sort by name
     links.sort((a, b) => a.giverName.localeCompare(b.giverName));
 
+    // Create formatted text for "copy all"
+    const allLinksText = links.map(l => `${l.giverName}:\n${l.link}`).join('\n\n');
+
     // Create modal content
     const modalHtml = `
         <div class="share-modal-overlay" onclick="closeShareModal(event)">
             <div class="share-modal" onclick="event.stopPropagation()">
                 <h3>Share Links</h3>
                 <p class="help-text">Send each person their personal link. They will only see their own assignment.</p>
+                <div class="share-actions">
+                    <button class="small-btn primary-btn" onclick="copyAllShareLinks(this)">Copy All Links</button>
+                </div>
                 <ul class="share-links-list">
                     ${links.map(l => `
                         <li>
                             <span class="share-name">${escapeHtml(l.giverName)}</span>
-                            <button class="small-btn" onclick="copyShareLink('${escapeHtml(l.link)}', this)">Copy Link</button>
+                            <button class="small-btn" onclick="copyShareLink('${escapeHtml(l.link)}', this)">Copy</button>
                         </li>
                     `).join('')}
                 </ul>
@@ -1068,6 +1074,9 @@ function showShareLinks(editionId) {
             </div>
         </div>
     `;
+
+    // Store all links for copy all function
+    window._allShareLinks = allLinksText;
 
     // Remove existing modal if any
     const existing = document.querySelector('.share-modal-overlay');
@@ -1088,6 +1097,23 @@ function copyShareLink(link, button) {
         setTimeout(() => {
             button.textContent = originalText;
             button.classList.remove('primary-btn');
+        }, 2000);
+    }).catch(err => {
+        alert('Failed to copy: ' + err);
+    });
+}
+
+/**
+ * Copy all share links to clipboard
+ */
+function copyAllShareLinks(button) {
+    if (!window._allShareLinks) return;
+
+    navigator.clipboard.writeText(window._allShareLinks).then(() => {
+        const originalText = button.textContent;
+        button.textContent = 'All Copied!';
+        setTimeout(() => {
+            button.textContent = originalText;
         }, 2000);
     }).catch(err => {
         alert('Failed to copy: ' + err);
