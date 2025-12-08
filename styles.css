@@ -147,6 +147,32 @@ ul li:last-child {
     border-bottom: none;
 }
 
+ul li .item-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+/* Group tag in person list */
+.group-tag {
+    color: #888;
+    font-weight: normal;
+}
+
+/* Edit form */
+.edit-form {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    width: 100%;
+}
+
+.edit-form input,
+.edit-form select {
+    flex: 1;
+    min-width: 120px;
+}
+
 ul li .item-name {
     flex: 1;
 }

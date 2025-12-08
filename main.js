@@ -132,6 +132,7 @@ function deletePerson(id) {
 function renderPersons() {
     const list = document.getElementById('persons-list');
     const persons = getPersons();
+    const groups = getGroups();
 
     if (persons.length === 0) {
         list.innerHTML = '<li><em>No persons added yet.</em></li>';
@@ -141,12 +142,110 @@ function renderPersons() {
     // Sort persons alphabetically
     const sortedPersons = [...persons].sort((a, b) => a.name.localeCompare(b.name));
 
-    list.innerHTML = sortedPersons.map(p => `
-        <li>
-            <span class="item-name">${escapeHtml(p.name)}</span>
-            <button class="small-btn danger-btn" onclick="deletePerson('${p.id}')">Delete</button>
-        </li>
-    `).join('');
+    // Find which group each person belongs to
+    const personGroupMap = {};
+    groups.forEach(g => {
+        g.memberIds.forEach(pId => {
+            personGroupMap[pId] = g;
+        });
+    });
+
+    list.innerHTML = sortedPersons.map(p => {
+        const group = personGroupMap[p.id];
+        const groupName = group ? group.name : 'No group';
+        return `
+            <li id="person-item-${p.id}">
+                <span class="item-name">${escapeHtml(p.name)} <small class="group-tag">(${escapeHtml(groupName)})</small></span>
+                <span class="item-buttons">
+                    <button class="small-btn" onclick="editPerson('${p.id}')">Edit</button>
+                    <button class="small-btn danger-btn" onclick="deletePerson('${p.id}')">Delete</button>
+                </span>
+            </li>
+        `;
+    }).join('');
+}
+
+/**
+ * Show edit form for a person
+ */
+function editPerson(id) {
+    const persons = getPersons();
+    const person = persons.find(p => p.id === id);
+    if (!person) return;
+
+    const groups = getGroups();
+    const sortedGroups = [...groups].sort((a, b) => a.name.localeCompare(b.name));
+
+    // Find current group
+    let currentGroupId = '';
+    groups.forEach(g => {
+        if (g.memberIds.includes(id)) {
+            currentGroupId = g.id;
+        }
+    });
+
+    const li = document.getElementById(`person-item-${id}`);
+    li.innerHTML = `
+        <div class="edit-form">
+            <input type="text" id="edit-name-${id}" value="${escapeHtml(person.name)}" placeholder="Name">
+            <select id="edit-group-${id}">
+                <option value="">-- No group --</option>
+                ${sortedGroups.map(g => `<option value="${g.id}" ${g.id === currentGroupId ? 'selected' : ''}>${escapeHtml(g.name)}</option>`).join('')}
+            </select>
+            <button class="small-btn primary-btn" onclick="savePersonEdit('${id}')">Save</button>
+            <button class="small-btn" onclick="renderPersons()">Cancel</button>
+        </div>
+    `;
+}
+
+/**
+ * Save person edit
+ */
+function savePersonEdit(id) {
+    const nameInput = document.getElementById(`edit-name-${id}`);
+    const groupSelect = document.getElementById(`edit-group-${id}`);
+    const newName = nameInput.value.trim();
+    const newGroupId = groupSelect.value;
+
+    if (!newName) {
+        alert('Please enter a name.');
+        return;
+    }
+
+    const persons = getPersons();
+    const person = persons.find(p => p.id === id);
+    if (!person) return;
+
+    // Check for duplicate names (excluding current person)
+    if (persons.some(p => p.id !== id && p.name.toLowerCase() === newName.toLowerCase())) {
+        alert('A person with this name already exists.');
+        return;
+    }
+
+    // Update name
+    person.name = newName;
+    saveData(STORAGE_KEYS.PERSONS, persons);
+
+    // Update group membership
+    const groups = getGroups();
+
+    // Remove from all groups first
+    groups.forEach(g => {
+        g.memberIds = g.memberIds.filter(mId => mId !== id);
+    });
+
+    // Add to new group if selected
+    if (newGroupId) {
+        const newGroup = groups.find(g => g.id === newGroupId);
+        if (newGroup) {
+            newGroup.memberIds.push(id);
+        }
+    }
+
+    saveData(STORAGE_KEYS.GROUPS, groups);
+
+    renderPersons();
+    renderGroupsUI();
 }
 
 // ===========================================
