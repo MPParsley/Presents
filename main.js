@@ -296,7 +296,7 @@ function addGroup() {
  * Delete a group
  */
 function deleteGroup(id) {
-    if (!confirm('Are you sure you want to delete this group? All editions for this group will also be deleted.')) {
+    if (!confirm('Are you sure you want to delete this group? Members will become unassigned.')) {
         return;
     }
 
@@ -305,11 +305,7 @@ function deleteGroup(id) {
     groups = groups.filter(g => g.id !== id);
     saveData(STORAGE_KEYS.GROUPS, groups);
 
-    // Remove editions for this group
-    let editions = getEditions();
-    editions = editions.filter(e => e.groupId !== id);
-    saveData(STORAGE_KEYS.EDITIONS, editions);
-
+    renderPersons(); // Update person list to show "No group"
     renderGroupsUI();
     updateSelectDropdowns();
     updatePersonGroupDropdown();
@@ -623,32 +619,31 @@ function getEditions() {
 }
 
 /**
- * Get editions for a specific group and occasion
+ * Get editions for a specific occasion
  */
-function getEditionsForGroupAndOccasion(groupId, occasionId) {
+function getEditionsForOccasion(occasionId) {
     const editions = getEditions();
     return editions
-        .filter(e => e.groupId === groupId && e.occasionId === occasionId)
+        .filter(e => e.occasionId === occasionId)
         .sort((a, b) => a.createdAt - b.createdAt); // Sort by creation time
 }
 
 /**
- * Update the editions dropdown based on selected group and occasion
+ * Update the editions dropdown based on selected occasion
  */
 function updateEditionsList() {
-    const groupId = document.getElementById('select-group').value;
     const occasionId = document.getElementById('select-occasion').value;
     const editionSelect = document.getElementById('select-edition');
 
     // Clear current assignments display
     document.getElementById('assignments-list').innerHTML = '';
 
-    if (!groupId || !occasionId) {
+    if (!occasionId) {
         editionSelect.innerHTML = '<option value="">-- Select Edition --</option>';
         return;
     }
 
-    const editions = getEditionsForGroupAndOccasion(groupId, occasionId);
+    const editions = getEditionsForOccasion(occasionId);
 
     if (editions.length === 0) {
         editionSelect.innerHTML = '<option value="">-- No editions yet --</option>';
@@ -689,18 +684,29 @@ function showAssignments() {
     }
 
     const persons = getPersons();
+    const groups = getGroups();
+
+    // Build a map: personId -> groupName
+    const personToGroupName = {};
+    groups.forEach(g => {
+        g.memberIds.forEach(pId => {
+            personToGroupName[pId] = g.name;
+        });
+    });
 
     list.innerHTML = edition.assignments.map(a => {
         const giver = persons.find(p => p.id === a.giverId);
         const recipient = persons.find(p => p.id === a.recipientId);
         const giverName = giver ? giver.name : '[Deleted Person]';
         const recipientName = recipient ? recipient.name : '[Deleted Person]';
+        const giverGroup = personToGroupName[a.giverId] || 'No group';
+        const recipientGroup = personToGroupName[a.recipientId] || 'No group';
 
         return `
             <li>
-                <span>${escapeHtml(giverName)}</span>
-                <span class="arrow">buys a gift for</span>
-                <span>${escapeHtml(recipientName)}</span>
+                <span>${escapeHtml(giverName)} <small class="group-tag">(${escapeHtml(giverGroup)})</small></span>
+                <span class="arrow">→</span>
+                <span>${escapeHtml(recipientName)} <small class="group-tag">(${escapeHtml(recipientGroup)})</small></span>
             </li>
         `;
     }).join('');
@@ -741,41 +747,52 @@ function deleteEdition(id) {
  * Run the shuffle algorithm to create a new edition
  *
  * Business Rules:
- * 1. Only members of the selected group participate
+ * 1. All persons who belong to a group participate
  * 2. No one can be assigned to themselves
- * 3. No one can be assigned to the same recipient as in any previous edition
+ * 3. No one can be assigned to someone from their OWN group (cross-group assignment)
+ * 4. No one can be assigned to the same recipient as in any previous edition
  */
 function runShuffle() {
-    const groupId = document.getElementById('select-group').value;
     const occasionId = document.getElementById('select-occasion').value;
 
     // Validation
-    if (!groupId || !occasionId) {
-        alert('Please select both a group and an occasion.');
+    if (!occasionId) {
+        alert('Please select an occasion.');
         return;
     }
 
     const groups = getGroups();
-    const group = groups.find(g => g.id === groupId);
+    const persons = getPersons();
 
-    if (!group) {
-        alert('Selected group not found.');
+    // Build a map: personId -> groupId
+    const personToGroup = {};
+    groups.forEach(g => {
+        g.memberIds.forEach(pId => {
+            personToGroup[pId] = g.id;
+        });
+    });
+
+    // Get all persons who are in a group
+    const participantIds = persons.filter(p => personToGroup[p.id]).map(p => p.id);
+
+    if (participantIds.length < 2) {
+        alert('At least 2 persons must be assigned to groups to run a shuffle.');
         return;
     }
 
-    const memberIds = group.memberIds;
-
-    if (memberIds.length < 2) {
-        alert('The group must have at least 2 members to run a shuffle.');
+    // Check that there are at least 2 groups with members
+    const groupsWithMembers = groups.filter(g => g.memberIds.length > 0);
+    if (groupsWithMembers.length < 2) {
+        alert('At least 2 groups with members are required for cross-group shuffling.');
         return;
     }
 
-    // Get previous assignments for this group + occasion
-    const previousEditions = getEditionsForGroupAndOccasion(groupId, occasionId);
+    // Get previous assignments for this occasion
+    const previousEditions = getEditionsForOccasion(occasionId);
 
     // Build a map of "forbidden" assignments: giverId -> Set of recipientIds they've had before
     const forbidden = {};
-    memberIds.forEach(id => {
+    participantIds.forEach(id => {
         forbidden[id] = new Set();
     });
 
@@ -793,7 +810,7 @@ function runShuffle() {
     let assignments = null;
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-        const result = tryCreateAssignment(memberIds, forbidden);
+        const result = tryCreateCrossGroupAssignment(participantIds, personToGroup, forbidden);
         if (result) {
             assignments = result;
             break;
@@ -804,10 +821,10 @@ function runShuffle() {
         alert(
             'Could not find a valid assignment after many attempts.\n\n' +
             'This can happen if:\n' +
-            '- The group is too small\n' +
+            '- Not enough persons in different groups\n' +
             '- There have been too many previous editions\n' +
             '- The constraints are impossible to satisfy\n\n' +
-            'Try adding more members to the group or using a different occasion.'
+            'Try adding more persons to different groups or using a different occasion.'
         );
         return;
     }
@@ -815,7 +832,6 @@ function runShuffle() {
     // Create the edition
     const edition = {
         id: generateId(),
-        groupId: groupId,
         occasionId: occasionId,
         createdAt: Date.now(),
         assignments: assignments
@@ -836,24 +852,25 @@ function runShuffle() {
 }
 
 /**
- * Try to create a valid assignment using a random derangement
- *
- * A "derangement" is a permutation where no element appears in its original position.
- * We also need to respect the "forbidden" constraints from previous editions.
+ * Try to create a valid cross-group assignment
  *
  * Algorithm:
- * 1. Shuffle the members list randomly
+ * 1. Shuffle the participants list randomly
  * 2. Assign each person to the next person in the shuffled list (circular)
- * 3. Check if all assignments are valid (not self, not forbidden)
+ * 3. Check if all assignments are valid:
+ *    - Not self
+ *    - Not same group (cross-group constraint)
+ *    - Not forbidden (from previous editions)
  * 4. If valid, return the assignments; otherwise, return null to try again
  *
- * @param {string[]} memberIds - Array of member IDs
+ * @param {string[]} participantIds - Array of participant IDs
+ * @param {Object} personToGroup - Map of personId -> groupId
  * @param {Object} forbidden - Map of giverId -> Set of forbidden recipientIds
  * @returns {Array|null} Array of {giverId, recipientId} or null if failed
  */
-function tryCreateAssignment(memberIds, forbidden) {
-    // Create a shuffled copy of memberIds
-    const shuffled = [...memberIds];
+function tryCreateCrossGroupAssignment(participantIds, personToGroup, forbidden) {
+    // Create a shuffled copy of participantIds
+    const shuffled = [...participantIds];
     shuffleArray(shuffled);
 
     const assignments = [];
@@ -865,10 +882,15 @@ function tryCreateAssignment(memberIds, forbidden) {
 
         // Rule 2: Can't give to yourself
         if (giverId === recipientId) {
-            return null; // This shouldn't happen with our algorithm, but check anyway
+            return null;
         }
 
-        // Rule 3: Can't give to someone from a previous edition
+        // Rule 3: Can't give to someone in your OWN group (cross-group constraint)
+        if (personToGroup[giverId] === personToGroup[recipientId]) {
+            return null; // Same group, constraint violated
+        }
+
+        // Rule 4: Can't give to someone from a previous edition
         if (forbidden[giverId] && forbidden[giverId].has(recipientId)) {
             return null; // Constraint violated, try again
         }
@@ -894,35 +916,23 @@ function shuffleArray(array) {
 // ===========================================
 
 /**
- * Update the group and occasion select dropdowns
+ * Update the occasion select dropdown
  */
 function updateSelectDropdowns() {
-    const groupSelect = document.getElementById('select-group');
     const occasionSelect = document.getElementById('select-occasion');
 
-    const groups = getGroups();
     const occasions = getOccasions();
 
-    // Preserve current selections
-    const currentGroup = groupSelect.value;
+    // Preserve current selection
     const currentOccasion = occasionSelect.value;
-
-    // Sort groups alphabetically
-    const sortedGroups = [...groups].sort((a, b) => a.name.localeCompare(b.name));
 
     // Sort occasions alphabetically
     const sortedOccasions = [...occasions].sort((a, b) => a.name.localeCompare(b.name));
 
-    groupSelect.innerHTML = '<option value="">-- Select Group --</option>' +
-        sortedGroups.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
-
     occasionSelect.innerHTML = '<option value="">-- Select Occasion --</option>' +
         sortedOccasions.map(o => `<option value="${o.id}">${escapeHtml(o.name)}${o.date ? ` (${escapeHtml(o.date)})` : ''}</option>`).join('');
 
-    // Restore selections if still valid
-    if (groups.some(g => g.id === currentGroup)) {
-        groupSelect.value = currentGroup;
-    }
+    // Restore selection if still valid
     if (occasions.some(o => o.id === currentOccasion)) {
         occasionSelect.value = currentOccasion;
     }

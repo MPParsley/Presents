@@ -58,13 +58,7 @@ function generateTurtle() {
     turtle += '\n';
     turtle += 'seg:Edition rdf:type rdfs:Class ;\n';
     turtle += '    rdfs:label "Edition" ;\n';
-    turtle += '    rdfs:comment "Represents one run of the gift shuffler for a specific group and occasion." .\n';
-    turtle += '\n';
-    turtle += 'seg:set rdf:type rdf:Property ;\n';
-    turtle += '    rdfs:label "set" ;\n';
-    turtle += '    rdfs:comment "Links an Edition to the Group (set) it was created for." ;\n';
-    turtle += '    rdfs:domain seg:Edition ;\n';
-    turtle += '    rdfs:range foaf:Group .\n';
+    turtle += '    rdfs:comment "Represents one run of the gift shuffler for a specific occasion with cross-group assignments." .\n';
     turtle += '\n';
     turtle += 'seg:hasAssignment rdf:type rdf:Property ;\n';
     turtle += '    rdfs:label "hasAssignment" ;\n';
@@ -138,7 +132,6 @@ function generateTurtle() {
         // Export the Edition
         turtle += `<edition/${edition.id}> rdf:type seg:Edition ;\n`;
         turtle += `    schema:event <occasion/${edition.occasionId}> ;\n`;
-        turtle += `    seg:set <group/${edition.groupId}> ;\n`;
         turtle += `    schema:dateCreated "${new Date(edition.createdAt).toISOString()}"^^xsd:dateTime`;
 
         // Link to assignments
