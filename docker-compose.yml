@@ -1,0 +1,95 @@
+# Gift Name Shuffler - Docker Compose Configuration
+#
+# This file defines all services needed to run the Gift Name Shuffler application:
+# 1. fuseki   - Apache Jena Fuseki triplestore (RDF database)
+# 2. backend  - Python Flask API server
+# 3. frontend - Nginx serving Vue.js static files with API proxy
+#
+# Usage:
+#   docker compose up        # Start all services
+#   docker compose up -d     # Start in detached mode
+#   docker compose down      # Stop all services
+#   docker compose down -v   # Stop and remove volumes
+
+services:
+  # ==========================================================================
+  # Apache Jena Fuseki - Triplestore / SPARQL Endpoint
+  # ==========================================================================
+  fuseki:
+    image: stain/jena-fuseki:4.10.0
+    container_name: gift-fuseki
+    ports:
+      - "3030:3030"  # Fuseki admin UI and SPARQL endpoint
+    environment:
+      # Admin password for Fuseki UI
+      - ADMIN_PASSWORD=admin123
+      # Create dataset on startup
+      - FUSEKI_DATASET_1=gifts
+    volumes:
+      # Persist Fuseki data
+      - fuseki-data:/fuseki
+      # Mount ontology files for reference (optional)
+      - ./ontology:/ontology:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3030/$/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # ==========================================================================
+  # Backend - Python Flask API
+  # ==========================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: gift-backend
+    ports:
+      - "5000:5000"  # API endpoint (optional direct access)
+    environment:
+      - FUSEKI_URL=http://fuseki:3030
+      - FUSEKI_DATASET=gifts
+      - ONTOLOGY_DIR=/app/ontology
+      - PORT=5000
+      - FLASK_DEBUG=false
+    volumes:
+      # Mount ontology files for loading into triplestore
+      - ./ontology:/app/ontology:ro
+    depends_on:
+      fuseki:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ==========================================================================
+  # Frontend - Nginx + Vue.js Static Files
+  # ==========================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: gift-frontend
+    ports:
+      - "8080:80"  # Web UI
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+# ==========================================================================
+# Volumes
+# ==========================================================================
+volumes:
+  fuseki-data:
+    name: gift-fuseki-data

@@ -1,0 +1,92 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix schema: <http://schema.org/> .
+@prefix seg: <https://segersrosseel.be/ns/gift#> .
+
+# =============================================================================
+# Gift Name Shuffler Ontology
+# =============================================================================
+# This ontology extends FOAF and Schema.org to model gift-giving scenarios,
+# specifically for "Secret Santa" style gift exchanges.
+# =============================================================================
+
+seg: a owl:Ontology ;
+    rdfs:label "Gift Name Shuffler Ontology"@en ;
+    rdfs:comment "An ontology for modeling gift exchanges and Secret Santa scenarios."@en ;
+    owl:versionInfo "1.0.0" .
+
+# =============================================================================
+# Custom Classes
+# =============================================================================
+
+# GroupGiftAction: When one group gives gifts to another group
+seg:GroupGiftAction a rdfs:Class ;
+    rdfs:subClassOf schema:GiveAction ;
+    rdfs:label "Group Gift Action"@en ;
+    rdfs:comment "Represents a gift-giving action where one group gives to another group."@en .
+
+# SecretSantaAction: Individual assignment in a gift exchange
+seg:SecretSantaAction a rdfs:Class ;
+    rdfs:subClassOf schema:GiveAction ;
+    rdfs:label "Secret Santa Action"@en ;
+    rdfs:comment "Represents a single assignment in a Secret Santa / gift shuffler edition where one person gives a gift to another."@en .
+
+# Edition: A single run of the shuffler for a group and occasion
+seg:Edition a rdfs:Class ;
+    rdfs:label "Edition"@en ;
+    rdfs:comment "Represents one run of the gift shuffler for a specific occasion and group (e.g., 'Family Segers – Christmas 2025 – Edition 1')."@en .
+
+# =============================================================================
+# Custom Properties
+# =============================================================================
+
+# Links an Edition to its foaf:Group (the set of participants)
+seg:set a rdf:Property ;
+    rdfs:label "set"@en ;
+    rdfs:comment "Links an Edition to the foaf:Group that participates in the gift exchange."@en ;
+    rdfs:domain seg:Edition ;
+    rdfs:range foaf:Group .
+
+# Links an Edition to the schema:Event (occasion)
+seg:occasion a rdf:Property ;
+    rdfs:label "occasion"@en ;
+    rdfs:comment "Links an Edition to the schema:Event (occasion) for which the gift exchange takes place."@en ;
+    rdfs:domain seg:Edition ;
+    rdfs:range schema:Event .
+
+# Links an Edition to its assignments (SecretSantaAction instances)
+seg:hasAssignment a rdf:Property ;
+    rdfs:label "has assignment"@en ;
+    rdfs:comment "Links an Edition to the individual SecretSantaAction assignments created during the shuffle."@en ;
+    rdfs:domain seg:Edition ;
+    rdfs:range seg:SecretSantaAction .
+
+# Links a SecretSantaAction back to its Edition
+seg:inEdition a rdf:Property ;
+    rdfs:label "in edition"@en ;
+    rdfs:comment "Links a SecretSantaAction to the Edition it belongs to."@en ;
+    rdfs:domain seg:SecretSantaAction ;
+    rdfs:range seg:Edition .
+
+# Edition number (for ordering editions)
+seg:editionNumber a rdf:Property ;
+    rdfs:label "edition number"@en ;
+    rdfs:comment "The sequential number of this edition for the group+occasion combination."@en ;
+    rdfs:domain seg:Edition ;
+    rdfs:range xsd:integer .
+
+# Creation timestamp
+seg:createdAt a rdf:Property ;
+    rdfs:label "created at"@en ;
+    rdfs:comment "The timestamp when this resource was created."@en ;
+    rdfs:range xsd:dateTime .
+
+# Whether an edition has been shuffled
+seg:isShuffled a rdf:Property ;
+    rdfs:label "is shuffled"@en ;
+    rdfs:comment "Indicates whether the edition has been shuffled and assignments created."@en ;
+    rdfs:domain seg:Edition ;
+    rdfs:range xsd:boolean .

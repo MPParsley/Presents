@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gift Name Shuffler</title>
+    <!-- Vue 3 from CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <style>
+        :root {
+            --primary: #e74c3c;
+            --primary-dark: #c0392b;
+            --secondary: #27ae60;
+            --bg: #f5f5f5;
+            --card-bg: #ffffff;
+            --text: #333333;
+            --text-light: #666666;
+            --border: #e0e0e0;
+            --shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        header h1 {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+
+        header p {
+            opacity: 0.9;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: var(--card-bg);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .tab:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .tab.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .card h2 {
+            color: var(--primary);
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .card h3 {
+            margin-bottom: 10px;
+            color: var(--text);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 1em;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #219a52;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 0.9em;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .list {
+            list-style: none;
+        }
+
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .list-item:last-child {
+            border-bottom: none;
+        }
+
+        .list-item:hover {
+            background: #f9f9f9;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background: var(--border);
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin-left: 8px;
+        }
+
+        .tag.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .tag.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .assignment-list {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .assignment-item {
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .assignment-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .arrow {
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-light);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-light);
+        }
+
+        .member-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: #e9ecef;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 0.9em;
+            margin: 4px;
+        }
+
+        .member-badge button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #6c757d;
+            font-size: 1.1em;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .member-badge button:hover {
+            color: var(--primary);
+        }
+
+        .inline-form {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .inline-form .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        .edition-card {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .edition-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .flex-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 600px) {
+            .tabs {
+                flex-direction: column;
+            }
+
+            .tab {
+                width: 100%;
+                text-align: center;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .inline-form {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="app-container">
+        <!-- Header -->
+        <header>
+            <h1>🎁 Gift Name Shuffler</h1>
+            <p>Randomly assign gift givers for your events</p>
+        </header>
+
+        <!-- Connection Status -->
+        <div v-if="connectionError" class="error">
+            Unable to connect to the backend. Make sure the server is running.
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <div class="tab" :class="{ active: activeTab === 'shuffle' }" @click="activeTab = 'shuffle'">
+                🎲 Shuffle
+            </div>
+            <div class="tab" :class="{ active: activeTab === 'persons' }" @click="activeTab = 'persons'">
+                👤 Persons
+            </div>
+            <div class="tab" :class="{ active: activeTab === 'groups' }" @click="activeTab = 'groups'">
+                👥 Groups
+            </div>
+            <div class="tab" :class="{ active: activeTab === 'occasions' }" @click="activeTab = 'occasions'">
+                📅 Occasions
+            </div>
+            <div class="tab" :class="{ active: activeTab === 'history' }" @click="activeTab = 'history'">
+                📜 History
+            </div>
+        </div>
+
+        <!-- Shuffle Tab -->
+        <div v-if="activeTab === 'shuffle'">
+            <div class="grid">
+                <!-- Create Edition -->
+                <div class="card">
+                    <h2>Create New Edition</h2>
+
+                    <div v-if="groups.length === 0 || occasions.length === 0" class="empty-state">
+                        <p>Please create at least one group and one occasion first.</p>
+                    </div>
+
+                    <div v-else>
+                        <div class="form-group">
+                            <label>Select Group</label>
+                            <select v-model="selectedGroupUri">
+                                <option value="">-- Select a group --</option>
+                                <option v-for="group in groups" :key="group.uri" :value="group.uri">
+                                    {{ group.name }} ({{ group.members.length }} members)
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Select Occasion</label>
+                            <select v-model="selectedOccasionUri">
+                                <option value="">-- Select an occasion --</option>
+                                <option v-for="occasion in occasions" :key="occasion.uri" :value="occasion.uri">
+                                    {{ occasion.name }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <div v-if="selectedGroup && selectedGroup.members.length < 2" class="error">
+                            The selected group needs at least 2 members to shuffle.
+                        </div>
+
+                        <button
+                            class="btn btn-primary"
+                            @click="createEdition"
+                            :disabled="!canCreateEdition"
+                        >
+                            Create Edition
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Run Shuffle -->
+                <div class="card">
+                    <h2>Run Shuffle</h2>
+
+                    <div v-if="unshuffledEditions.length === 0" class="empty-state">
+                        <p>No pending editions to shuffle.</p>
+                        <p>Create a new edition first.</p>
+                    </div>
+
+                    <div v-else>
+                        <div class="form-group">
+                            <label>Select Edition to Shuffle</label>
+                            <select v-model="editionToShuffle">
+                                <option value="">-- Select an edition --</option>
+                                <option v-for="edition in unshuffledEditions" :key="edition.uri" :value="edition.uri">
+                                    {{ edition.name }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <button
+                            class="btn btn-secondary"
+                            @click="runShuffle"
+                            :disabled="!editionToShuffle || isShuffling"
+                        >
+                            {{ isShuffling ? 'Shuffling...' : '🎲 Run Shuffle' }}
+                        </button>
+
+                        <div v-if="shuffleError" class="error" style="margin-top: 15px;">
+                            {{ shuffleError }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Latest Results -->
+            <div v-if="latestAssignments.length > 0" class="card">
+                <h2>Latest Shuffle Results</h2>
+                <div class="assignment-list">
+                    <div v-for="assignment in latestAssignments" :key="assignment.uri" class="assignment-item">
+                        <strong>{{ assignment.giverName }}</strong>
+                        <span class="arrow">→</span>
+                        <span>buys a gift for</span>
+                        <span class="arrow">→</span>
+                        <strong>{{ assignment.recipientName }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Persons Tab -->
+        <div v-if="activeTab === 'persons'">
+            <div class="card">
+                <h2>Manage Persons</h2>
+
+                <!-- Add Person Form -->
+                <div class="inline-form" style="margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label>Add New Person</label>
+                        <input
+                            type="text"
+                            v-model="newPersonName"
+                            placeholder="Enter name..."
+                            @keyup.enter="addPerson"
+                        >
+                    </div>
+                    <button class="btn btn-primary" @click="addPerson" :disabled="!newPersonName.trim()">
+                        Add Person
+                    </button>
+                </div>
+
+                <!-- Person List -->
+                <div v-if="persons.length === 0" class="empty-state">
+                    No persons yet. Add someone above!
+                </div>
+
+                <ul v-else class="list">
+                    <li v-for="person in persons" :key="person.uri" class="list-item">
+                        <span>{{ person.name }}</span>
+                        <button class="btn btn-danger btn-small" @click="deletePerson(person)">
+                            Delete
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Groups Tab -->
+        <div v-if="activeTab === 'groups'">
+            <div class="grid">
+                <!-- Add Group -->
+                <div class="card">
+                    <h2>Create Group</h2>
+                    <div class="inline-form">
+                        <div class="form-group">
+                            <label>Group Name</label>
+                            <input
+                                type="text"
+                                v-model="newGroupName"
+                                placeholder="Enter group name..."
+                                @keyup.enter="addGroup"
+                            >
+                        </div>
+                        <button class="btn btn-primary" @click="addGroup" :disabled="!newGroupName.trim()">
+                            Create
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Add Member to Group -->
+                <div class="card">
+                    <h2>Add Member to Group</h2>
+                    <div v-if="groups.length === 0 || persons.length === 0" class="empty-state">
+                        <p>Create groups and persons first.</p>
+                    </div>
+                    <div v-else>
+                        <div class="form-group">
+                            <label>Select Group</label>
+                            <select v-model="memberAddGroupUri">
+                                <option value="">-- Select group --</option>
+                                <option v-for="group in groups" :key="group.uri" :value="group.uri">
+                                    {{ group.name }}
+                                </option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Select Person</label>
+                            <select v-model="memberAddPersonUri">
+                                <option value="">-- Select person --</option>
+                                <option
+                                    v-for="person in availablePersonsForGroup"
+                                    :key="person.uri"
+                                    :value="person.uri"
+                                >
+                                    {{ person.name }}
+                                </option>
+                            </select>
+                        </div>
+                        <button
+                            class="btn btn-secondary"
+                            @click="addMemberToGroup"
+                            :disabled="!memberAddGroupUri || !memberAddPersonUri"
+                        >
+                            Add to Group
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Group List -->
+            <div class="card">
+                <h2>All Groups</h2>
+
+                <div v-if="groups.length === 0" class="empty-state">
+                    No groups yet. Create one above!
+                </div>
+
+                <div v-else>
+                    <div v-for="group in groups" :key="group.uri" class="edition-card">
+                        <div class="edition-header">
+                            <h3>{{ group.name }}</h3>
+                            <button class="btn btn-danger btn-small" @click="deleteGroup(group)">
+                                Delete Group
+                            </button>
+                        </div>
+
+                        <div v-if="group.members.length === 0" style="color: var(--text-light);">
+                            No members yet
+                        </div>
+
+                        <div v-else>
+                            <span
+                                v-for="member in group.members"
+                                :key="member.uri"
+                                class="member-badge"
+                            >
+                                {{ member.name }}
+                                <button @click="removeMemberFromGroup(group.uri, member.uri)" title="Remove from group">
+                                    ×
+                                </button>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Occasions Tab -->
+        <div v-if="activeTab === 'occasions'">
+            <div class="card">
+                <h2>Manage Occasions</h2>
+
+                <!-- Add Occasion Form -->
+                <div style="margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label>Occasion Name</label>
+                        <input
+                            type="text"
+                            v-model="newOccasionName"
+                            placeholder="e.g., Christmas 2025"
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label>Description (optional)</label>
+                        <textarea
+                            v-model="newOccasionDescription"
+                            placeholder="Add a description..."
+                            rows="2"
+                        ></textarea>
+                    </div>
+                    <button class="btn btn-primary" @click="addOccasion" :disabled="!newOccasionName.trim()">
+                        Create Occasion
+                    </button>
+                </div>
+
+                <!-- Occasion List -->
+                <div v-if="occasions.length === 0" class="empty-state">
+                    No occasions yet. Create one above!
+                </div>
+
+                <ul v-else class="list">
+                    <li v-for="occasion in occasions" :key="occasion.uri" class="list-item">
+                        <div>
+                            <strong>{{ occasion.name }}</strong>
+                            <div v-if="occasion.description" style="color: var(--text-light); font-size: 0.9em;">
+                                {{ occasion.description }}
+                            </div>
+                        </div>
+                        <button class="btn btn-danger btn-small" @click="deleteOccasion(occasion)">
+                            Delete
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div v-if="activeTab === 'history'">
+            <div class="card">
+                <h2>Edition History</h2>
+
+                <!-- Filter -->
+                <div class="grid" style="margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label>Filter by Group</label>
+                        <select v-model="historyGroupFilter">
+                            <option value="">All Groups</option>
+                            <option v-for="group in groups" :key="group.uri" :value="group.uri">
+                                {{ group.name }}
+                            </option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Filter by Occasion</label>
+                        <select v-model="historyOccasionFilter">
+                            <option value="">All Occasions</option>
+                            <option v-for="occasion in occasions" :key="occasion.uri" :value="occasion.uri">
+                                {{ occasion.name }}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <div v-if="filteredEditions.length === 0" class="empty-state">
+                    No editions found.
+                </div>
+
+                <div v-else>
+                    <div v-for="edition in filteredEditions" :key="edition.uri" class="edition-card">
+                        <div class="edition-header">
+                            <div>
+                                <h3>{{ edition.name }}</h3>
+                                <div style="color: var(--text-light); font-size: 0.9em;">
+                                    {{ formatDate(edition.createdAt) }}
+                                </div>
+                            </div>
+                            <div class="flex-row">
+                                <span v-if="edition.isShuffled" class="tag success">Shuffled</span>
+                                <span v-else class="tag pending">Pending</span>
+                                <button class="btn btn-danger btn-small" @click="deleteEdition(edition)">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Show assignments if shuffled -->
+                        <div v-if="edition.isShuffled">
+                            <button
+                                class="btn btn-small"
+                                @click="toggleEditionAssignments(edition.uri)"
+                                style="margin-bottom: 10px;"
+                            >
+                                {{ expandedEditions.has(edition.uri) ? 'Hide' : 'Show' }} Assignments
+                            </button>
+
+                            <div v-if="expandedEditions.has(edition.uri)" class="assignment-list">
+                                <div v-if="editionAssignments[edition.uri]">
+                                    <div
+                                        v-for="assignment in editionAssignments[edition.uri]"
+                                        :key="assignment.uri"
+                                        class="assignment-item"
+                                    >
+                                        <strong>{{ assignment.giverName }}</strong>
+                                        <span class="arrow">→</span>
+                                        <strong>{{ assignment.recipientName }}</strong>
+                                    </div>
+                                </div>
+                                <div v-else class="loading">Loading assignments...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, reactive, onMounted, watch } = Vue;
+
+        // API Base URL - configurable for different environments
+        const API_BASE = window.API_BASE_URL || '/api';
+
+        createApp({
+            setup() {
+                // State
+                const activeTab = ref('shuffle');
+                const connectionError = ref(false);
+
+                // Data
+                const persons = ref([]);
+                const groups = ref([]);
+                const occasions = ref([]);
+                const editions = ref([]);
+
+                // Forms
+                const newPersonName = ref('');
+                const newGroupName = ref('');
+                const newOccasionName = ref('');
+                const newOccasionDescription = ref('');
+
+                // Shuffle
+                const selectedGroupUri = ref('');
+                const selectedOccasionUri = ref('');
+                const editionToShuffle = ref('');
+                const isShuffling = ref(false);
+                const shuffleError = ref('');
+                const latestAssignments = ref([]);
+
+                // Group members
+                const memberAddGroupUri = ref('');
+                const memberAddPersonUri = ref('');
+
+                // History
+                const historyGroupFilter = ref('');
+                const historyOccasionFilter = ref('');
+                const expandedEditions = reactive(new Set());
+                const editionAssignments = reactive({});
+
+                // Computed
+                const selectedGroup = computed(() => {
+                    return groups.value.find(g => g.uri === selectedGroupUri.value);
+                });
+
+                const canCreateEdition = computed(() => {
+                    return selectedGroupUri.value &&
+                           selectedOccasionUri.value &&
+                           selectedGroup.value &&
+                           selectedGroup.value.members.length >= 2;
+                });
+
+                const unshuffledEditions = computed(() => {
+                    return editions.value.filter(e => !e.isShuffled);
+                });
+
+                const availablePersonsForGroup = computed(() => {
+                    if (!memberAddGroupUri.value) return persons.value;
+                    const group = groups.value.find(g => g.uri === memberAddGroupUri.value);
+                    if (!group) return persons.value;
+                    const memberUris = new Set(group.members.map(m => m.uri));
+                    return persons.value.filter(p => !memberUris.has(p.uri));
+                });
+
+                const filteredEditions = computed(() => {
+                    return editions.value.filter(e => {
+                        if (historyGroupFilter.value && e.groupUri !== historyGroupFilter.value) {
+                            return false;
+                        }
+                        if (historyOccasionFilter.value && e.occasionUri !== historyOccasionFilter.value) {
+                            return false;
+                        }
+                        return true;
+                    });
+                });
+
+                // API helpers
+                async function apiGet(endpoint) {
+                    const response = await fetch(`${API_BASE}${endpoint}`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.json();
+                }
+
+                async function apiPost(endpoint, data) {
+                    const response = await fetch(`${API_BASE}${endpoint}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.error || `HTTP ${response.status}`);
+                    }
+                    return response.json();
+                }
+
+                async function apiDelete(endpoint) {
+                    const response = await fetch(`${API_BASE}${endpoint}`, {
+                        method: 'DELETE'
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.json();
+                }
+
+                // Load all data
+                async function loadData() {
+                    try {
+                        connectionError.value = false;
+                        [persons.value, groups.value, occasions.value, editions.value] = await Promise.all([
+                            apiGet('/persons'),
+                            apiGet('/groups'),
+                            apiGet('/occasions'),
+                            apiGet('/editions')
+                        ]);
+                    } catch (error) {
+                        console.error('Failed to load data:', error);
+                        connectionError.value = true;
+                    }
+                }
+
+                // Person operations
+                async function addPerson() {
+                    if (!newPersonName.value.trim()) return;
+                    try {
+                        await apiPost('/persons', { name: newPersonName.value.trim() });
+                        newPersonName.value = '';
+                        await loadData();
+                    } catch (error) {
+                        alert('Failed to add person: ' + error.message);
+                    }
+                }
+
+                async function deletePerson(person) {
+                    if (!confirm(`Delete ${person.name}?`)) return;
+                    try {
+                        await apiDelete(`/persons/${encodeURIComponent(person.uri)}`);
+                        await loadData();
+                    } catch (error) {
+                        alert('Failed to delete person: ' + error.message);
+                    }
+                }
+
+                // Group operations
+                async function addGroup() {
+                    if (!newGroupName.value.trim()) return;
+                    try {
+                        await apiPost('/groups', { name: newGroupName.value.trim() });
+                        newGroupName.value = '';
+                        await loadData();
+                    } catch (error) {
+                        alert('Failed to add group: ' + error.message);
+                    }
+                }
+
+                async function deleteGroup(group) {
+                    if (!confirm(`Delete ${group.name}?`)) return;
+                    try {
+                        await apiDelete(`/groups/${encodeURIComponent(group.uri)}`);
+                        await loadData();
+                    } catch (error) {
+                        alert('Failed to delete group: ' + error.message);
+                    }
+                }
+
+                async function addMemberToGroup() {
+                    if (!memberAddGroupUri.value || !memberAddPersonUri.value) return;
+                    try {
+                        await apiPost(`/groups/${encodeURIComponent(memberAddGroupUri.value)}/members`, {
+                            personUri: memberAddPersonUri.value
+                        });
+                        memberAddPersonUri.value = '';
+                        await loadData();
+                    } catch (error) {
+                        alert('Failed to add member: ' + error.message);
+                    }
+                }
+
+                async function removeMemberFromGroup(groupUri, personUri) {
+                    try {
+                        await apiDelete(`/groups/${encodeURIComponent(groupUri)}/members/${encodeURIComponent(personUri)}`);
+                        await loadData();
+                    } catch (error) {
+                        alert('Failed to remove member: ' + error.message);
+                    }
+                }
+
+                // Occasion operations
+                async function addOccasion() {
+                    if (!newOccasionName.value.trim()) return;
+                    try {
+                        await apiPost('/occasions', {
+                            name: newOccasionName.value.trim(),
+                            description: newOccasionDescription.value.trim()
+                        });
+                        newOccasionName.value = '';
+                        newOccasionDescription.value = '';
+                        await loadData();
+                    } catch (error) {
+                        alert('Failed to add occasion: ' + error.message);
+                    }
+                }
+
+                async function deleteOccasion(occasion) {
+                    if (!confirm(`Delete ${occasion.name}?`)) return;
+                    try {
+                        await apiDelete(`/occasions/${encodeURIComponent(occasion.uri)}`);
+                        await loadData();
+                    } catch (error) {
+                        alert('Failed to delete occasion: ' + error.message);
+                    }
+                }
+
+                // Edition operations
+                async function createEdition() {
+                    if (!canCreateEdition.value) return;
+                    try {
+                        await apiPost('/editions', {
+                            groupUri: selectedGroupUri.value,
+                            occasionUri: selectedOccasionUri.value
+                        });
+                        await loadData();
+                    } catch (error) {
+                        alert('Failed to create edition: ' + error.message);
+                    }
+                }
+
+                async function runShuffle() {
+                    if (!editionToShuffle.value) return;
+                    isShuffling.value = true;
+                    shuffleError.value = '';
+                    latestAssignments.value = [];
+
+                    try {
+                        const result = await apiPost(`/editions/${encodeURIComponent(editionToShuffle.value)}/shuffle`, {});
+                        latestAssignments.value = result.assignments;
+                        editionToShuffle.value = '';
+                        await loadData();
+                    } catch (error) {
+                        shuffleError.value = error.message;
+                    } finally {
+                        isShuffling.value = false;
+                    }
+                }
+
+                async function deleteEdition(edition) {
+                    if (!confirm(`Delete "${edition.name}"?`)) return;
+                    try {
+                        await apiDelete(`/editions/${encodeURIComponent(edition.uri)}`);
+                        await loadData();
+                    } catch (error) {
+                        alert('Failed to delete edition: ' + error.message);
+                    }
+                }
+
+                async function toggleEditionAssignments(editionUri) {
+                    if (expandedEditions.has(editionUri)) {
+                        expandedEditions.delete(editionUri);
+                    } else {
+                        expandedEditions.add(editionUri);
+                        if (!editionAssignments[editionUri]) {
+                            try {
+                                editionAssignments[editionUri] = await apiGet(`/editions/${encodeURIComponent(editionUri)}/assignments`);
+                            } catch (error) {
+                                console.error('Failed to load assignments:', error);
+                            }
+                        }
+                    }
+                }
+
+                // Helpers
+                function formatDate(dateString) {
+                    const date = new Date(dateString);
+                    return date.toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                }
+
+                // Initialize
+                onMounted(loadData);
+
+                return {
+                    // State
+                    activeTab,
+                    connectionError,
+
+                    // Data
+                    persons,
+                    groups,
+                    occasions,
+                    editions,
+
+                    // Forms
+                    newPersonName,
+                    newGroupName,
+                    newOccasionName,
+                    newOccasionDescription,
+
+                    // Shuffle
+                    selectedGroupUri,
+                    selectedOccasionUri,
+                    selectedGroup,
+                    canCreateEdition,
+                    editionToShuffle,
+                    unshuffledEditions,
+                    isShuffling,
+                    shuffleError,
+                    latestAssignments,
+
+                    // Groups
+                    memberAddGroupUri,
+                    memberAddPersonUri,
+                    availablePersonsForGroup,
+
+                    // History
+                    historyGroupFilter,
+                    historyOccasionFilter,
+                    filteredEditions,
+                    expandedEditions,
+                    editionAssignments,
+
+                    // Methods
+                    addPerson,
+                    deletePerson,
+                    addGroup,
+                    deleteGroup,
+                    addMemberToGroup,
+                    removeMemberFromGroup,
+                    addOccasion,
+                    deleteOccasion,
+                    createEdition,
+                    runShuffle,
+                    deleteEdition,
+                    toggleEditionAssignments,
+                    formatDate
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

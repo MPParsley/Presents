@@ -1,0 +1,230 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix schema: <http://schema.org/> .
+@prefix seg: <https://segersrosseel.be/ns/gift#> .
+
+# =============================================================================
+# SHACL Shapes for Gift Name Shuffler
+# =============================================================================
+# These shapes enforce the business rules for the gift exchange system.
+# =============================================================================
+
+# =============================================================================
+# Rule 1: GroupGiftAction constraints
+# A group can only buy a gift for another group (not itself)
+# =============================================================================
+
+seg:GroupGiftActionShape a sh:NodeShape ;
+    sh:targetClass seg:GroupGiftAction ;
+    rdfs:label "Group Gift Action Shape"@en ;
+    rdfs:comment "Validates that a GroupGiftAction has exactly one foaf:Group as agent and recipient, and they are different."@en ;
+
+    # Agent must be exactly one foaf:Group
+    sh:property [
+        sh:path schema:agent ;
+        sh:class foaf:Group ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "A GroupGiftAction must have exactly one foaf:Group as the agent (giver)."@en ;
+    ] ;
+
+    # Recipient must be exactly one foaf:Group
+    sh:property [
+        sh:path schema:recipient ;
+        sh:class foaf:Group ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "A GroupGiftAction must have exactly one foaf:Group as the recipient."@en ;
+    ] ;
+
+    # Agent must NOT equal recipient (SPARQL-based constraint)
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "In a GroupGiftAction, the agent (giver group) must not be the same as the recipient group."@en ;
+        sh:prefixes seg: ;
+        sh:select """
+            PREFIX schema: <http://schema.org/>
+            SELECT $this
+            WHERE {
+                $this schema:agent ?agent .
+                $this schema:recipient ?recipient .
+                FILTER (?agent = ?recipient)
+            }
+        """ ;
+    ] .
+
+# =============================================================================
+# Rule 2: SecretSantaAction constraints
+# A person cannot pick themselves
+# =============================================================================
+
+seg:SecretSantaActionShape a sh:NodeShape ;
+    sh:targetClass seg:SecretSantaAction ;
+    rdfs:label "Secret Santa Action Shape"@en ;
+    rdfs:comment "Validates that a SecretSantaAction has exactly one foaf:Person as agent and recipient, and they are different."@en ;
+
+    # Agent must be exactly one foaf:Person
+    sh:property [
+        sh:path schema:agent ;
+        sh:class foaf:Person ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "A SecretSantaAction must have exactly one foaf:Person as the agent (giver)."@en ;
+    ] ;
+
+    # Recipient must be exactly one foaf:Person
+    sh:property [
+        sh:path schema:recipient ;
+        sh:class foaf:Person ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "A SecretSantaAction must have exactly one foaf:Person as the recipient."@en ;
+    ] ;
+
+    # Agent must NOT equal recipient (SPARQL-based constraint)
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "In a SecretSantaAction, the agent (giver) must not be the same as the recipient. A person cannot pick themselves."@en ;
+        sh:prefixes seg: ;
+        sh:select """
+            PREFIX schema: <http://schema.org/>
+            SELECT $this
+            WHERE {
+                $this schema:agent ?agent .
+                $this schema:recipient ?recipient .
+                FILTER (?agent = ?recipient)
+            }
+        """ ;
+    ] .
+
+# =============================================================================
+# Edition Shape
+# =============================================================================
+
+seg:EditionShape a sh:NodeShape ;
+    sh:targetClass seg:Edition ;
+    rdfs:label "Edition Shape"@en ;
+    rdfs:comment "Validates that an Edition has required links to an occasion and a group."@en ;
+
+    # Must have exactly one occasion (schema:Event)
+    sh:property [
+        sh:path seg:occasion ;
+        sh:class schema:Event ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "An Edition must be linked to exactly one schema:Event (occasion)."@en ;
+    ] ;
+
+    # Must have exactly one set (foaf:Group)
+    sh:property [
+        sh:path seg:set ;
+        sh:class foaf:Group ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "An Edition must be linked to exactly one foaf:Group (set)."@en ;
+    ] ;
+
+    # Must have a name
+    sh:property [
+        sh:path rdfs:label ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:message "An Edition must have a label (name)."@en ;
+    ] ;
+
+    # Must have edition number
+    sh:property [
+        sh:path seg:editionNumber ;
+        sh:datatype xsd:integer ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:minInclusive 1 ;
+        sh:message "An Edition must have an edition number >= 1."@en ;
+    ] .
+
+# =============================================================================
+# Person Shape (basic validation)
+# =============================================================================
+
+seg:PersonShape a sh:NodeShape ;
+    sh:targetClass foaf:Person ;
+    rdfs:label "Person Shape"@en ;
+    rdfs:comment "Validates that a Person has a name."@en ;
+
+    sh:property [
+        sh:path foaf:name ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:message "A Person must have a foaf:name."@en ;
+    ] .
+
+# =============================================================================
+# Group Shape (basic validation)
+# =============================================================================
+
+seg:GroupShape a sh:NodeShape ;
+    sh:targetClass foaf:Group ;
+    rdfs:label "Group Shape"@en ;
+    rdfs:comment "Validates that a Group has a name."@en ;
+
+    sh:property [
+        sh:path foaf:name ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:message "A Group must have a foaf:name."@en ;
+    ] .
+
+# =============================================================================
+# Event/Occasion Shape (basic validation)
+# =============================================================================
+
+seg:OccasionShape a sh:NodeShape ;
+    sh:targetClass schema:Event ;
+    rdfs:label "Occasion Shape"@en ;
+    rdfs:comment "Validates that an Event (occasion) has a name."@en ;
+
+    sh:property [
+        sh:path schema:name ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:message "An Event (occasion) must have a schema:name."@en ;
+    ] .
+
+# =============================================================================
+# Rule 3: No duplicate assignments across editions (expressed for documentation)
+# =============================================================================
+# NOTE: Rule 3 (no picking the same person from previous editions) is primarily
+# enforced in application logic. The constraint below is for documentation and
+# can be used for post-hoc validation, but real-time enforcement happens in
+# the backend's shuffle algorithm.
+#
+# The algorithm queries all previous (agent, recipient) pairs for the same
+# group+occasion and ensures the new assignments don't repeat any of them.
+# =============================================================================
+
+seg:NoDuplicateAssignmentsInfo a rdfs:Resource ;
+    rdfs:label "No Duplicate Assignments Rule (Info)"@en ;
+    rdfs:comment """
+        Business Rule 3: If there was a previous edition for the same group and occasion,
+        the shuffler must not assign anyone the same recipient they had before.
+
+        This is enforced in application logic during the shuffle process:
+        1. Query all previous editions for the same (group, occasion) combination
+        2. Collect all (agent, recipient) pairs from those editions
+        3. When generating new assignments, exclude any pairs that already exist
+        4. If no valid assignment is possible, return an error
+
+        The SPARQL query used in the backend looks like:
+
+        SELECT ?agent ?recipient WHERE {
+            ?edition a seg:Edition ;
+                     seg:set <group-uri> ;
+                     seg:occasion <occasion-uri> ;
+                     seg:hasAssignment ?assignment .
+            ?assignment schema:agent ?agent ;
+                       schema:recipient ?recipient .
+        }
+    """@en .
