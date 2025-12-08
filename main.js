@@ -979,6 +979,16 @@ function showAssignments() {
     deleteBtn.textContent = 'Delete this Edition';
     deleteBtn.onclick = () => deleteEdition(editionId);
     container.appendChild(deleteBtn);
+
+    // Add share links button
+    const shareBtn = document.createElement('button');
+    shareBtn.id = 'share-links-btn';
+    shareBtn.className = 'small-btn';
+    shareBtn.style.marginTop = '10px';
+    shareBtn.style.marginLeft = '10px';
+    shareBtn.textContent = 'Share Links';
+    shareBtn.onclick = () => showShareLinks(editionId);
+    container.appendChild(shareBtn);
 }
 
 /**
@@ -997,6 +1007,100 @@ function deleteEdition(id) {
     document.getElementById('select-edition').value = '';
     updateEditionsList();
     showAssignments();
+}
+
+/**
+ * Generate a share link for an assignment
+ */
+function generateShareLink(giverName, recipientName, occasionName) {
+    const data = {
+        g: giverName,
+        r: recipientName,
+        o: occasionName
+    };
+    const encoded = btoa(JSON.stringify(data));
+    const baseUrl = window.location.href.replace(/\/[^\/]*$/, '/');
+    return baseUrl + 'reveal.html#' + encoded;
+}
+
+/**
+ * Show share links for an edition
+ */
+function showShareLinks(editionId) {
+    const editions = getEditions();
+    const edition = editions.find(e => e.id === editionId);
+    if (!edition) return;
+
+    const occasions = getOccasions();
+    const occasion = occasions.find(o => o.id === edition.occasionId);
+    const occasionName = occasion ? occasion.name : '';
+
+    const persons = getPersons();
+
+    // Generate links for each assignment
+    const links = edition.assignments.map(a => {
+        const giver = persons.find(p => p.id === a.giverId);
+        const recipient = persons.find(p => p.id === a.recipientId);
+        const giverName = giver ? giver.name : '[Unknown]';
+        const recipientName = recipient ? recipient.name : '[Unknown]';
+        const link = generateShareLink(giverName, recipientName, occasionName);
+        return { giverName, link };
+    });
+
+    // Sort by name
+    links.sort((a, b) => a.giverName.localeCompare(b.giverName));
+
+    // Create modal content
+    const modalHtml = `
+        <div class="share-modal-overlay" onclick="closeShareModal(event)">
+            <div class="share-modal" onclick="event.stopPropagation()">
+                <h3>Share Links</h3>
+                <p class="help-text">Send each person their personal link. They will only see their own assignment.</p>
+                <ul class="share-links-list">
+                    ${links.map(l => `
+                        <li>
+                            <span class="share-name">${escapeHtml(l.giverName)}</span>
+                            <button class="small-btn" onclick="copyShareLink('${escapeHtml(l.link)}', this)">Copy Link</button>
+                        </li>
+                    `).join('')}
+                </ul>
+                <button class="small-btn" onclick="closeShareModal()">Close</button>
+            </div>
+        </div>
+    `;
+
+    // Remove existing modal if any
+    const existing = document.querySelector('.share-modal-overlay');
+    if (existing) existing.remove();
+
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+/**
+ * Copy a share link to clipboard
+ */
+function copyShareLink(link, button) {
+    navigator.clipboard.writeText(link).then(() => {
+        const originalText = button.textContent;
+        button.textContent = 'Copied!';
+        button.classList.add('primary-btn');
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.classList.remove('primary-btn');
+        }, 2000);
+    }).catch(err => {
+        alert('Failed to copy: ' + err);
+    });
+}
+
+/**
+ * Close the share modal
+ */
+function closeShareModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    const modal = document.querySelector('.share-modal-overlay');
+    if (modal) modal.remove();
 }
 
 // ===========================================
