@@ -16,7 +16,8 @@ const STORAGE_KEYS = {
     GROUPS: 'giftApp.groups',
     OCCASIONS: 'giftApp.occasions',
     EDITIONS: 'giftApp.editions',
-    EXCLUSIONS: 'giftApp.exclusions'
+    EXCLUSIONS: 'giftApp.exclusions',
+    INCLUSIONS: 'giftApp.inclusions'
 };
 
 // ===========================================
@@ -102,13 +103,14 @@ function addPerson() {
     renderGroupsUI();
     updatePersonGroupDropdown();
     updateExclusionDropdowns();
+    updateInclusionDropdowns();
 }
 
 /**
  * Delete a person
  */
 function deletePerson(id) {
-    if (!confirm('Are you sure you want to delete this person? They will also be removed from all groups and exclusions.')) {
+    if (!confirm('Are you sure you want to delete this person? They will also be removed from all groups, exclusions, and inclusions.')) {
         return;
     }
 
@@ -129,10 +131,17 @@ function deletePerson(id) {
     exclusions = exclusions.filter(e => e.person1Id !== id && e.person2Id !== id);
     saveData(STORAGE_KEYS.EXCLUSIONS, exclusions);
 
+    // Remove person from all inclusions
+    let inclusions = getInclusions();
+    inclusions = inclusions.filter(i => i.giverId !== id && i.recipientId !== id);
+    saveData(STORAGE_KEYS.INCLUSIONS, inclusions);
+
     renderPersons();
     renderGroupsUI();
     renderExclusions();
+    renderInclusions();
     updateExclusionDropdowns();
+    updateInclusionDropdowns();
 }
 
 /**
@@ -256,7 +265,9 @@ function savePersonEdit(id) {
     renderPersons();
     renderGroupsUI();
     renderExclusions();
+    renderInclusions();
     updateExclusionDropdowns();
+    updateInclusionDropdowns();
 }
 
 // ===========================================
@@ -732,6 +743,125 @@ function updateExclusionDropdowns() {
 }
 
 // ===========================================
+// INCLUSIONS MANAGEMENT
+// ===========================================
+
+/**
+ * Get all inclusions
+ * Each inclusion is: { id, giverId, recipientId }
+ * Inclusions are one-directional: giver MUST give to recipient
+ */
+function getInclusions() {
+    return loadData(STORAGE_KEYS.INCLUSIONS);
+}
+
+/**
+ * Add a new inclusion (forced assignment)
+ */
+function addInclusion() {
+    const giverSelect = document.getElementById('inclusion-giver');
+    const recipientSelect = document.getElementById('inclusion-recipient');
+    const giverId = giverSelect.value;
+    const recipientId = recipientSelect.value;
+
+    if (!giverId || !recipientId) {
+        alert('Please select both giver and recipient.');
+        return;
+    }
+
+    if (giverId === recipientId) {
+        alert('A person cannot give to themselves.');
+        return;
+    }
+
+    const inclusions = getInclusions();
+
+    // Check if this giver already has a forced assignment
+    const giverHasInclusion = inclusions.some(i => i.giverId === giverId);
+    if (giverHasInclusion) {
+        alert('This person already has a forced assignment. Remove it first to add a new one.');
+        return;
+    }
+
+    // Check if this recipient already has a forced giver
+    const recipientHasInclusion = inclusions.some(i => i.recipientId === recipientId);
+    if (recipientHasInclusion) {
+        alert('Someone else is already forced to give to this person. Remove it first.');
+        return;
+    }
+
+    inclusions.push({
+        id: generateId(),
+        giverId: giverId,
+        recipientId: recipientId
+    });
+
+    saveData(STORAGE_KEYS.INCLUSIONS, inclusions);
+    giverSelect.value = '';
+    recipientSelect.value = '';
+    renderInclusions();
+}
+
+/**
+ * Remove an inclusion
+ */
+function removeInclusion(id) {
+    let inclusions = getInclusions();
+    inclusions = inclusions.filter(i => i.id !== id);
+    saveData(STORAGE_KEYS.INCLUSIONS, inclusions);
+    renderInclusions();
+}
+
+/**
+ * Render the inclusions list
+ */
+function renderInclusions() {
+    const list = document.getElementById('inclusions-list');
+    const inclusions = getInclusions();
+    const persons = getPersons();
+
+    if (inclusions.length === 0) {
+        list.innerHTML = '<li><em>No forced assignments added.</em></li>';
+        return;
+    }
+
+    list.innerHTML = inclusions.map(i => {
+        const giver = persons.find(p => p.id === i.giverId);
+        const recipient = persons.find(p => p.id === i.recipientId);
+        const giverName = giver ? giver.name : '[Deleted]';
+        const recipientName = recipient ? recipient.name : '[Deleted]';
+
+        return `
+            <li>
+                <span class="inclusion-text">${escapeHtml(giverName)} → ${escapeHtml(recipientName)}</span>
+                <button class="small-btn danger-btn" onclick="removeInclusion('${i.id}')">Remove</button>
+            </li>
+        `;
+    }).join('');
+}
+
+/**
+ * Update the inclusion person dropdowns
+ */
+function updateInclusionDropdowns() {
+    const giverSelect = document.getElementById('inclusion-giver');
+    const recipientSelect = document.getElementById('inclusion-recipient');
+    const persons = getPersons();
+
+    // Sort persons alphabetically
+    const sortedPersons = [...persons].sort((a, b) => a.name.localeCompare(b.name));
+
+    const giverOptions = '<option value="">-- Giver --</option>' +
+        sortedPersons.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+
+    const recipientOptions = '<option value="">-- Recipient --</option>' +
+        sortedPersons.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+
+    giverSelect.innerHTML = giverOptions;
+    recipientSelect.innerHTML = recipientOptions;
+}
+
+// ===========================================
 // EDITIONS MANAGEMENT
 // ===========================================
 
@@ -946,13 +1076,41 @@ function runShuffle() {
         }
     });
 
+    // Rule 7: Get inclusions (forced assignments) and validate them
+    const inclusions = getInclusions();
+    const forcedAssignments = [];
+
+    for (const inclusion of inclusions) {
+        const giverId = inclusion.giverId;
+        const recipientId = inclusion.recipientId;
+
+        // Check if both giver and recipient are participants
+        if (!participantIds.includes(giverId) || !participantIds.includes(recipientId)) {
+            continue; // Skip if either person is not in a group
+        }
+
+        // Check if this forced assignment violates the cross-group rule
+        if (personToGroup[giverId] === personToGroup[recipientId]) {
+            alert(`Inclusion "${persons.find(p => p.id === giverId)?.name} → ${persons.find(p => p.id === recipientId)?.name}" violates the cross-group rule. Both are in the same group.`);
+            return;
+        }
+
+        // Check if this forced assignment is forbidden
+        if (forbidden[giverId] && forbidden[giverId].has(recipientId)) {
+            alert(`Inclusion "${persons.find(p => p.id === giverId)?.name} → ${persons.find(p => p.id === recipientId)?.name}" conflicts with other rules (previous edition or exclusion).`);
+            return;
+        }
+
+        forcedAssignments.push({ giverId, recipientId });
+    }
+
     // Try to find a valid assignment using random permutations
     // We'll attempt up to MAX_ATTEMPTS times before giving up
     const MAX_ATTEMPTS = 1000;
     let assignments = null;
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-        const result = tryCreateCrossGroupAssignment(participantIds, personToGroup, forbidden);
+        const result = tryCreateCrossGroupAssignment(participantIds, personToGroup, forbidden, forcedAssignments);
         if (result) {
             assignments = result;
             break;
@@ -998,48 +1156,78 @@ function runShuffle() {
  * Try to create a valid cross-group assignment
  *
  * Algorithm:
- * 1. Shuffle the participants list randomly
- * 2. Assign each person to the next person in the shuffled list (circular)
- * 3. Check if all assignments are valid:
- *    - Not self
- *    - Not same group (cross-group constraint)
- *    - Not forbidden (from previous editions)
- * 4. If valid, return the assignments; otherwise, return null to try again
+ * 1. Start with forced assignments (inclusions)
+ * 2. Build chains: for non-forced givers, randomly assign valid recipients
+ * 3. Ensure circular structure: everyone gives and receives exactly once
  *
  * @param {string[]} participantIds - Array of participant IDs
  * @param {Object} personToGroup - Map of personId -> groupId
  * @param {Object} forbidden - Map of giverId -> Set of forbidden recipientIds
+ * @param {Array} forcedAssignments - Array of {giverId, recipientId} that must be included
  * @returns {Array|null} Array of {giverId, recipientId} or null if failed
  */
-function tryCreateCrossGroupAssignment(participantIds, personToGroup, forbidden) {
-    // Create a shuffled copy of participantIds
-    const shuffled = [...participantIds];
-    shuffleArray(shuffled);
+function tryCreateCrossGroupAssignment(participantIds, personToGroup, forbidden, forcedAssignments = []) {
+    // Track who is giving to whom
+    const giverToRecipient = {};
+    const recipientToGiver = {};
 
-    const assignments = [];
-
-    // Each person gives to the next person in the shuffled array (circular)
-    for (let i = 0; i < shuffled.length; i++) {
-        const giverId = shuffled[i];
-        const recipientId = shuffled[(i + 1) % shuffled.length];
-
-        // Rule 2: Can't give to yourself
-        if (giverId === recipientId) {
-            return null;
-        }
-
-        // Rule 3: Can't give to someone in your OWN group (cross-group constraint)
-        if (personToGroup[giverId] === personToGroup[recipientId]) {
-            return null; // Same group, constraint violated
-        }
-
-        // Rule 4: Can't give to someone from a previous edition
-        if (forbidden[giverId] && forbidden[giverId].has(recipientId)) {
-            return null; // Constraint violated, try again
-        }
-
-        assignments.push({ giverId, recipientId });
+    // Apply forced assignments first
+    for (const forced of forcedAssignments) {
+        giverToRecipient[forced.giverId] = forced.recipientId;
+        recipientToGiver[forced.recipientId] = forced.giverId;
     }
+
+    // Get participants who still need assignments
+    const unassignedGivers = participantIds.filter(id => !giverToRecipient[id]);
+    const unassignedRecipients = participantIds.filter(id => !recipientToGiver[id]);
+
+    // Shuffle unassigned givers for randomness
+    shuffleArray(unassignedGivers);
+
+    // For each unassigned giver, find a valid recipient
+    for (const giverId of unassignedGivers) {
+        // Find valid recipients (not already taken, different group, not forbidden)
+        const validRecipients = unassignedRecipients.filter(recipientId => {
+            // Rule 2: Can't give to yourself
+            if (giverId === recipientId) return false;
+
+            // Rule 3: Can't give to someone in your OWN group
+            if (personToGroup[giverId] === personToGroup[recipientId]) return false;
+
+            // Rule 4/5/6: Can't give to forbidden recipients
+            if (forbidden[giverId] && forbidden[giverId].has(recipientId)) return false;
+
+            // Already assigned as recipient
+            if (recipientToGiver[recipientId]) return false;
+
+            return true;
+        });
+
+        if (validRecipients.length === 0) {
+            return null; // No valid recipient found, retry with different shuffle
+        }
+
+        // Pick a random valid recipient
+        const recipientId = validRecipients[Math.floor(Math.random() * validRecipients.length)];
+
+        giverToRecipient[giverId] = recipientId;
+        recipientToGiver[recipientId] = giverId;
+
+        // Remove from unassigned
+        const idx = unassignedRecipients.indexOf(recipientId);
+        if (idx > -1) unassignedRecipients.splice(idx, 1);
+    }
+
+    // Verify everyone has exactly one assignment
+    if (Object.keys(giverToRecipient).length !== participantIds.length) {
+        return null;
+    }
+
+    // Convert to array format
+    const assignments = participantIds.map(giverId => ({
+        giverId,
+        recipientId: giverToRecipient[giverId]
+    }));
 
     return assignments;
 }
@@ -1111,7 +1299,8 @@ function exportDataJSON() {
             groups: getGroups(),
             occasions: getOccasions(),
             editions: getEditions(),
-            exclusions: getExclusions()
+            exclusions: getExclusions(),
+            inclusions: getInclusions()
         };
 
         const json = JSON.stringify(data, null, 2);
@@ -1173,6 +1362,7 @@ function importDataJSON(event) {
                 saveData(STORAGE_KEYS.OCCASIONS, data.occasions);
                 saveData(STORAGE_KEYS.EDITIONS, data.editions);
                 saveData(STORAGE_KEYS.EXCLUSIONS, data.exclusions || []);
+                saveData(STORAGE_KEYS.INCLUSIONS, data.inclusions || []);
             } else {
                 // Merge data (add new items, skip duplicates by ID)
                 const existingPersons = getPersons();
@@ -1180,12 +1370,14 @@ function importDataJSON(event) {
                 const existingOccasions = getOccasions();
                 const existingEditions = getEditions();
                 const existingExclusions = getExclusions();
+                const existingInclusions = getInclusions();
 
                 const existingPersonIds = new Set(existingPersons.map(p => p.id));
                 const existingGroupIds = new Set(existingGroups.map(g => g.id));
                 const existingOccasionIds = new Set(existingOccasions.map(o => o.id));
                 const existingEditionIds = new Set(existingEditions.map(e => e.id));
                 const existingExclusionIds = new Set(existingExclusions.map(e => e.id));
+                const existingInclusionIds = new Set(existingInclusions.map(i => i.id));
 
                 // Add new items
                 data.persons.forEach(p => {
@@ -1215,12 +1407,20 @@ function importDataJSON(event) {
                         }
                     });
                 }
+                if (data.inclusions) {
+                    data.inclusions.forEach(i => {
+                        if (!existingInclusionIds.has(i.id)) {
+                            existingInclusions.push(i);
+                        }
+                    });
+                }
 
                 saveData(STORAGE_KEYS.PERSONS, existingPersons);
                 saveData(STORAGE_KEYS.GROUPS, existingGroups);
                 saveData(STORAGE_KEYS.OCCASIONS, existingOccasions);
                 saveData(STORAGE_KEYS.EDITIONS, existingEditions);
                 saveData(STORAGE_KEYS.EXCLUSIONS, existingExclusions);
+                saveData(STORAGE_KEYS.INCLUSIONS, existingInclusions);
             }
 
             // Refresh UI
@@ -1228,9 +1428,11 @@ function importDataJSON(event) {
             renderGroupsUI();
             renderOccasions();
             renderExclusions();
+            renderInclusions();
             updateSelectDropdowns();
             updatePersonGroupDropdown();
             updateExclusionDropdowns();
+            updateInclusionDropdowns();
             updateEditionsList();
 
             alert('Data imported successfully!');
@@ -1253,7 +1455,7 @@ function importDataJSON(event) {
  * Reset all data with confirmation
  */
 function resetAllData() {
-    if (!confirm('Are you sure you want to delete ALL data?\n\nThis will remove all persons, groups, occasions, editions, and exclusions.\n\nThis action cannot be undone!')) {
+    if (!confirm('Are you sure you want to delete ALL data?\n\nThis will remove all persons, groups, occasions, editions, exclusions, and inclusions.\n\nThis action cannot be undone!')) {
         return;
     }
 
@@ -1267,15 +1469,18 @@ function resetAllData() {
     localStorage.removeItem(STORAGE_KEYS.OCCASIONS);
     localStorage.removeItem(STORAGE_KEYS.EDITIONS);
     localStorage.removeItem(STORAGE_KEYS.EXCLUSIONS);
+    localStorage.removeItem(STORAGE_KEYS.INCLUSIONS);
 
     // Re-render everything
     renderPersons();
     renderGroupsUI();
     renderOccasions();
     renderExclusions();
+    renderInclusions();
     updateSelectDropdowns();
     updatePersonGroupDropdown();
     updateExclusionDropdowns();
+    updateInclusionDropdowns();
     updateEditionsList();
 
     alert('All data has been reset.');
@@ -1306,9 +1511,11 @@ function init() {
     renderGroupsUI();
     renderOccasions();
     renderExclusions();
+    renderInclusions();
     updateSelectDropdowns();
     updatePersonGroupDropdown();
     updateExclusionDropdowns();
+    updateInclusionDropdowns();
     updateEditionsList();
 }
 

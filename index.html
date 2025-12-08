@@ -67,21 +67,37 @@
                 <button onclick="runShuffle()" class="primary-btn">Run Shuffle (Create New Edition)</button>
             </div>
 
-            <!-- Hidden exclusions feature -->
+            <!-- Hidden exclusions/inclusions feature -->
             <details class="advanced-settings">
-                <summary>Advanced: Exclusions</summary>
-                <p class="help-text">Add pairs of people who should NOT be assigned to each other (e.g., couples, roommates).</p>
+                <summary>Advanced: Rules</summary>
+
+                <h4>Exclusions (Cannot give to)</h4>
+                <p class="help-text">Pairs who should NOT be assigned to each other (e.g., couples, roommates).</p>
                 <div class="form-row">
                     <select id="exclusion-person1">
                         <option value="">-- Person 1 --</option>
                     </select>
-                    <span class="exclusion-arrow">↔</span>
+                    <span class="rule-arrow">↔</span>
                     <select id="exclusion-person2">
                         <option value="">-- Person 2 --</option>
                     </select>
                     <button onclick="addExclusion()">Add</button>
                 </div>
                 <ul id="exclusions-list"></ul>
+
+                <h4>Inclusions (Must give to)</h4>
+                <p class="help-text">Force a specific person to give to another (one-way).</p>
+                <div class="form-row">
+                    <select id="inclusion-giver">
+                        <option value="">-- Giver --</option>
+                    </select>
+                    <span class="rule-arrow">→</span>
+                    <select id="inclusion-recipient">
+                        <option value="">-- Recipient --</option>
+                    </select>
+                    <button onclick="addInclusion()">Add</button>
+                </div>
+                <ul id="inclusions-list"></ul>
             </details>
 
             <div id="editions-container">

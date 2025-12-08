@@ -112,9 +112,20 @@ header p {
     margin: 10px 0;
 }
 
-.exclusion-arrow {
+.rule-arrow {
     font-size: 1.2rem;
     color: #888;
+    font-weight: bold;
+}
+
+.advanced-settings h4 {
+    margin: 15px 0 5px;
+    color: #555;
+    font-size: 0.95rem;
+}
+
+.advanced-settings h4:first-of-type {
+    margin-top: 10px;
 }
 
 #exclusions-list li {
@@ -125,6 +136,17 @@ header p {
 }
 
 #exclusions-list li .exclusion-text {
+    flex: 1;
+}
+
+#inclusions-list li {
+    background: #d4edda;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-top: 5px;
+}
+
+#inclusions-list li .inclusion-text {
     flex: 1;
 }
 
