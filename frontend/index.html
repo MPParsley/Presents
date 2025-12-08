@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gift Name Shuffler</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Gift Name Shuffler</h1>
+        <p>Organize Secret Santa and gift exchanges easily!</p>
+    </header>
+
+    <main>
+        <!-- Section 1: Manage Persons -->
+        <section id="persons-section" class="card">
+            <h2>Persons</h2>
+            <div class="form-row">
+                <input type="text" id="person-name" placeholder="Person name">
+                <button onclick="addPerson()">Add Person</button>
+            </div>
+            <ul id="persons-list"></ul>
+        </section>
+
+        <!-- Section 2: Manage Groups -->
+        <section id="groups-section" class="card">
+            <h2>Groups</h2>
+            <div class="form-row">
+                <input type="text" id="group-name" placeholder="Group name">
+                <button onclick="addGroup()">Add Group</button>
+            </div>
+            <div id="groups-container"></div>
+        </section>
+
+        <!-- Section 3: Manage Occasions -->
+        <section id="occasions-section" class="card">
+            <h2>Occasions</h2>
+            <div class="form-row">
+                <input type="text" id="occasion-name" placeholder="Occasion name (e.g., Christmas 2025)">
+                <input type="text" id="occasion-date" placeholder="Date/Year (optional)">
+                <button onclick="addOccasion()">Add Occasion</button>
+            </div>
+            <ul id="occasions-list"></ul>
+        </section>
+
+        <!-- Section 4: Shuffle & Assignments -->
+        <section id="shuffle-section" class="card">
+            <h2>Shuffle &amp; Assignments</h2>
+            <div class="form-row">
+                <label for="select-group">Group:</label>
+                <select id="select-group" onchange="updateEditionsList()">
+                    <option value="">-- Select Group --</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label for="select-occasion">Occasion:</label>
+                <select id="select-occasion" onchange="updateEditionsList()">
+                    <option value="">-- Select Occasion --</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <button onclick="runShuffle()" class="primary-btn">Run Shuffle (Create New Edition)</button>
+            </div>
+
+            <div id="editions-container">
+                <h3>Editions</h3>
+                <select id="select-edition" onchange="showAssignments()">
+                    <option value="">-- Select Edition --</option>
+                </select>
+            </div>
+
+            <div id="assignments-container">
+                <h3>Assignments</h3>
+                <ul id="assignments-list"></ul>
+            </div>
+        </section>
+
+        <!-- Section 5: Export -->
+        <section id="export-section" class="card">
+            <h2>Export Data</h2>
+            <div class="form-row">
+                <button onclick="exportAsTurtle()">Export as Turtle (.ttl)</button>
+                <button onclick="downloadTurtle()">Download .ttl File</button>
+            </div>
+            <textarea id="export-output" placeholder="Turtle output will appear here..."></textarea>
+        </section>
+
+        <!-- Section 6: Reset -->
+        <section id="reset-section" class="card danger">
+            <h2>Reset Data</h2>
+            <p>This will permanently delete all data stored in this browser.</p>
+            <button onclick="resetAllData()" class="danger-btn">Reset All Data</button>
+        </section>
+    </main>
+
+    <footer>
+        <p>Gift Name Shuffler &mdash; A simple static web app for organizing gift exchanges.</p>
+    </footer>
+
+    <script src="main.js"></script>
+    <script src="export.js"></script>
+</body>
+</html>
