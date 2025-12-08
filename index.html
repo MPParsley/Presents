@@ -79,9 +79,20 @@
             </div>
         </section>
 
-        <!-- Section 5: Export -->
+        <!-- Section 5: Share Data -->
+        <section id="share-section" class="card">
+            <h2>Share Data</h2>
+            <p>Export your data to share with others, or import data from someone else.</p>
+            <div class="form-row">
+                <button onclick="exportDataJSON()">Export Data (.json)</button>
+                <button onclick="document.getElementById('import-file').click()">Import Data (.json)</button>
+                <input type="file" id="import-file" accept=".json" onchange="importDataJSON(event)" style="display: none;">
+            </div>
+        </section>
+
+        <!-- Section 6: Export RDF -->
         <section id="export-section" class="card">
-            <h2>Export Data</h2>
+            <h2>Export as RDF</h2>
             <div class="form-row">
                 <button onclick="exportAsTurtle()">Export as Turtle (.ttl)</button>
                 <button onclick="downloadTurtle()">Download .ttl File</button>

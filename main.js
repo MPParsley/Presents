@@ -860,6 +860,127 @@ function updatePersonGroupDropdown() {
 }
 
 // ===========================================
+// DATA SHARING (IMPORT/EXPORT JSON)
+// ===========================================
+
+/**
+ * Export all app data as a JSON file
+ */
+function exportDataJSON() {
+    const data = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        persons: getPersons(),
+        groups: getGroups(),
+        occasions: getOccasions(),
+        editions: getEditions()
+    };
+
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `gift-shuffler-data-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+/**
+ * Import app data from a JSON file
+ */
+function importDataJSON(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+
+            // Validate the data structure
+            if (!data.persons || !data.groups || !data.occasions || !data.editions) {
+                alert('Invalid data file. Missing required fields.');
+                return;
+            }
+
+            // Ask user how to handle import
+            const choice = confirm(
+                'How do you want to import this data?\n\n' +
+                'OK = Replace all existing data\n' +
+                'Cancel = Merge with existing data'
+            );
+
+            if (choice) {
+                // Replace all data
+                saveData(STORAGE_KEYS.PERSONS, data.persons);
+                saveData(STORAGE_KEYS.GROUPS, data.groups);
+                saveData(STORAGE_KEYS.OCCASIONS, data.occasions);
+                saveData(STORAGE_KEYS.EDITIONS, data.editions);
+            } else {
+                // Merge data (add new items, skip duplicates by ID)
+                const existingPersons = getPersons();
+                const existingGroups = getGroups();
+                const existingOccasions = getOccasions();
+                const existingEditions = getEditions();
+
+                const existingPersonIds = new Set(existingPersons.map(p => p.id));
+                const existingGroupIds = new Set(existingGroups.map(g => g.id));
+                const existingOccasionIds = new Set(existingOccasions.map(o => o.id));
+                const existingEditionIds = new Set(existingEditions.map(e => e.id));
+
+                // Add new items
+                data.persons.forEach(p => {
+                    if (!existingPersonIds.has(p.id)) {
+                        existingPersons.push(p);
+                    }
+                });
+                data.groups.forEach(g => {
+                    if (!existingGroupIds.has(g.id)) {
+                        existingGroups.push(g);
+                    }
+                });
+                data.occasions.forEach(o => {
+                    if (!existingOccasionIds.has(o.id)) {
+                        existingOccasions.push(o);
+                    }
+                });
+                data.editions.forEach(e => {
+                    if (!existingEditionIds.has(e.id)) {
+                        existingEditions.push(e);
+                    }
+                });
+
+                saveData(STORAGE_KEYS.PERSONS, existingPersons);
+                saveData(STORAGE_KEYS.GROUPS, existingGroups);
+                saveData(STORAGE_KEYS.OCCASIONS, existingOccasions);
+                saveData(STORAGE_KEYS.EDITIONS, existingEditions);
+            }
+
+            // Refresh UI
+            renderPersons();
+            renderGroupsUI();
+            renderOccasions();
+            updateSelectDropdowns();
+            updatePersonGroupDropdown();
+            updateEditionsList();
+
+            alert('Data imported successfully!');
+        } catch (err) {
+            alert('Error reading file: ' + err.message);
+        }
+    };
+
+    reader.readAsText(file);
+
+    // Reset file input so the same file can be selected again
+    event.target.value = '';
+}
+
+// ===========================================
 // RESET DATA
 // ===========================================
 
