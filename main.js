@@ -950,26 +950,41 @@ function updatePersonGroupDropdown() {
  * Export all app data as a JSON file
  */
 function exportDataJSON() {
-    const data = {
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        persons: getPersons(),
-        groups: getGroups(),
-        occasions: getOccasions(),
-        editions: getEditions()
-    };
+    try {
+        const data = {
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            persons: getPersons(),
+            groups: getGroups(),
+            occasions: getOccasions(),
+            editions: getEditions()
+        };
 
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const filename = `gift-shuffler-data-${new Date().toISOString().split('T')[0]}.json`;
 
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `gift-shuffler-data-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+        // Create and trigger download
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+
+        // Use setTimeout to ensure the element is in the DOM
+        setTimeout(() => {
+            a.click();
+            // Clean up after a delay
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+        }, 0);
+    } catch (err) {
+        alert('Error exporting data: ' + err.message);
+        console.error('Export error:', err);
+    }
 }
 
 /**
