@@ -504,11 +504,60 @@ function renderOccasions() {
     const sortedOccasions = [...occasions].sort((a, b) => a.name.localeCompare(b.name));
 
     list.innerHTML = sortedOccasions.map(o => `
-        <li>
+        <li id="occasion-item-${o.id}">
             <span class="item-name">${escapeHtml(o.name)}${o.date ? ` (${escapeHtml(o.date)})` : ''}</span>
-            <button class="small-btn danger-btn" onclick="deleteOccasion('${o.id}')">Delete</button>
+            <span class="item-buttons">
+                <button class="small-btn" onclick="editOccasion('${o.id}')">Edit</button>
+                <button class="small-btn danger-btn" onclick="deleteOccasion('${o.id}')">Delete</button>
+            </span>
         </li>
     `).join('');
+}
+
+/**
+ * Show edit form for an occasion
+ */
+function editOccasion(id) {
+    const occasions = getOccasions();
+    const occasion = occasions.find(o => o.id === id);
+    if (!occasion) return;
+
+    const li = document.getElementById(`occasion-item-${id}`);
+    li.innerHTML = `
+        <div class="edit-form">
+            <input type="text" id="edit-occasion-name-${id}" value="${escapeHtml(occasion.name)}" placeholder="Name">
+            <input type="date" id="edit-occasion-date-${id}" value="${occasion.date || ''}">
+            <button class="small-btn primary-btn" onclick="saveOccasionEdit('${id}')">Save</button>
+            <button class="small-btn" onclick="renderOccasions()">Cancel</button>
+        </div>
+    `;
+}
+
+/**
+ * Save occasion edit
+ */
+function saveOccasionEdit(id) {
+    const nameInput = document.getElementById(`edit-occasion-name-${id}`);
+    const dateInput = document.getElementById(`edit-occasion-date-${id}`);
+    const newName = nameInput.value.trim();
+    const newDate = dateInput.value.trim();
+
+    if (!newName) {
+        alert('Please enter a name.');
+        return;
+    }
+
+    const occasions = getOccasions();
+    const occasion = occasions.find(o => o.id === id);
+    if (!occasion) return;
+
+    // Update occasion
+    occasion.name = newName;
+    occasion.date = newDate || null;
+    saveData(STORAGE_KEYS.OCCASIONS, occasions);
+
+    renderOccasions();
+    updateSelectDropdowns();
 }
 
 // ===========================================
