@@ -123,7 +123,10 @@ function renderPersons() {
         return;
     }
 
-    list.innerHTML = persons.map(p => `
+    // Sort persons alphabetically
+    const sortedPersons = [...persons].sort((a, b) => a.name.localeCompare(b.name));
+
+    list.innerHTML = sortedPersons.map(p => `
         <li>
             <span class="item-name">${escapeHtml(p.name)}</span>
             <button class="small-btn danger-btn" onclick="deletePerson('${p.id}')">Delete</button>
@@ -252,14 +255,26 @@ function renderGroupsUI() {
         return;
     }
 
-    container.innerHTML = groups.map(group => {
-        // Get members of this group
+    // Collect all person IDs that are already in ANY group
+    const allAssignedPersonIds = new Set();
+    groups.forEach(g => {
+        g.memberIds.forEach(id => allAssignedPersonIds.add(id));
+    });
+
+    // Get persons not in ANY group (sorted alphabetically)
+    const unassignedPersons = persons
+        .filter(p => !allAssignedPersonIds.has(p.id))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+    // Sort groups alphabetically
+    const sortedGroups = [...groups].sort((a, b) => a.name.localeCompare(b.name));
+
+    container.innerHTML = sortedGroups.map(group => {
+        // Get members of this group (sorted alphabetically)
         const members = group.memberIds
             .map(id => persons.find(p => p.id === id))
-            .filter(p => p); // Filter out any deleted persons
-
-        // Get persons not in this group (for the add dropdown)
-        const nonMembers = persons.filter(p => !group.memberIds.includes(p.id));
+            .filter(p => p) // Filter out any deleted persons
+            .sort((a, b) => a.name.localeCompare(b.name));
 
         const membersHtml = members.length === 0
             ? '<li><em>No members yet.</em></li>'
@@ -270,12 +285,12 @@ function renderGroupsUI() {
                 </li>
             `).join('');
 
-        const addMemberHtml = nonMembers.length === 0
-            ? '<em>All persons are members.</em>'
+        const addMemberHtml = unassignedPersons.length === 0
+            ? '<em>All persons are assigned to a group.</em>'
             : `
                 <select id="add-member-${group.id}">
                     <option value="">-- Select Person --</option>
-                    ${nonMembers.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('')}
+                    ${unassignedPersons.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('')}
                 </select>
                 <button class="small-btn" onclick="addMemberToGroup('${group.id}')">Add Member</button>
             `;
@@ -369,7 +384,10 @@ function renderOccasions() {
         return;
     }
 
-    list.innerHTML = occasions.map(o => `
+    // Sort occasions alphabetically
+    const sortedOccasions = [...occasions].sort((a, b) => a.name.localeCompare(b.name));
+
+    list.innerHTML = sortedOccasions.map(o => `
         <li>
             <span class="item-name">${escapeHtml(o.name)}${o.date ? ` (${escapeHtml(o.date)})` : ''}</span>
             <button class="small-btn danger-btn" onclick="deleteOccasion('${o.id}')">Delete</button>
@@ -641,11 +659,17 @@ function updateSelectDropdowns() {
     const currentGroup = groupSelect.value;
     const currentOccasion = occasionSelect.value;
 
+    // Sort groups alphabetically
+    const sortedGroups = [...groups].sort((a, b) => a.name.localeCompare(b.name));
+
+    // Sort occasions alphabetically
+    const sortedOccasions = [...occasions].sort((a, b) => a.name.localeCompare(b.name));
+
     groupSelect.innerHTML = '<option value="">-- Select Group --</option>' +
-        groups.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
+        sortedGroups.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
 
     occasionSelect.innerHTML = '<option value="">-- Select Occasion --</option>' +
-        occasions.map(o => `<option value="${o.id}">${escapeHtml(o.name)}${o.date ? ` (${escapeHtml(o.date)})` : ''}</option>`).join('');
+        sortedOccasions.map(o => `<option value="${o.id}">${escapeHtml(o.name)}${o.date ? ` (${escapeHtml(o.date)})` : ''}</option>`).join('');
 
     // Restore selections if still valid
     if (groups.some(g => g.id === currentGroup)) {
