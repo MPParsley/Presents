@@ -412,10 +412,13 @@ function renderGroupsUI() {
             `;
 
         return `
-            <div class="group-card">
+            <div class="group-card" id="group-card-${group.id}">
                 <h4>
-                    <span>${escapeHtml(group.name)}</span>
-                    <button class="small-btn danger-btn" onclick="deleteGroup('${group.id}')">Delete Group</button>
+                    <span id="group-name-${group.id}">${escapeHtml(group.name)}</span>
+                    <span class="item-buttons">
+                        <button class="small-btn" onclick="editGroup('${group.id}')">Edit</button>
+                        <button class="small-btn danger-btn" onclick="deleteGroup('${group.id}')">Delete</button>
+                    </span>
                 </h4>
                 <strong>Members (${members.length}):</strong>
                 <ul class="members-list">${membersHtml}</ul>
@@ -423,6 +426,54 @@ function renderGroupsUI() {
             </div>
         `;
     }).join('');
+}
+
+/**
+ * Show edit form for a group name
+ */
+function editGroup(id) {
+    const groups = getGroups();
+    const group = groups.find(g => g.id === id);
+    if (!group) return;
+
+    const nameSpan = document.getElementById(`group-name-${id}`);
+    nameSpan.innerHTML = `
+        <input type="text" id="edit-group-name-${id}" value="${escapeHtml(group.name)}" placeholder="Group name" style="width: 150px;">
+        <button class="small-btn primary-btn" onclick="saveGroupEdit('${id}')">Save</button>
+        <button class="small-btn" onclick="renderGroupsUI()">Cancel</button>
+    `;
+}
+
+/**
+ * Save group name edit
+ */
+function saveGroupEdit(id) {
+    const nameInput = document.getElementById(`edit-group-name-${id}`);
+    const newName = nameInput.value.trim();
+
+    if (!newName) {
+        alert('Please enter a group name.');
+        return;
+    }
+
+    const groups = getGroups();
+    const group = groups.find(g => g.id === id);
+    if (!group) return;
+
+    // Check for duplicate names (excluding current group)
+    if (groups.some(g => g.id !== id && g.name.toLowerCase() === newName.toLowerCase())) {
+        alert('A group with this name already exists.');
+        return;
+    }
+
+    // Update name
+    group.name = newName;
+    saveData(STORAGE_KEYS.GROUPS, groups);
+
+    renderPersons(); // Update group tags in persons list
+    renderGroupsUI();
+    updateSelectDropdowns();
+    updatePersonGroupDropdown();
 }
 
 // ===========================================
