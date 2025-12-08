@@ -1506,6 +1506,46 @@ function escapeHtml(text) {
 }
 
 // ===========================================
+// SECRET FEATURE UNLOCK
+// ===========================================
+
+/**
+ * Track clicks on shuffle heading to unlock advanced features
+ */
+let secretClickCount = 0;
+let secretClickTimer = null;
+
+function setupSecretUnlock() {
+    const heading = document.getElementById('shuffle-heading');
+    const advancedRules = document.getElementById('advanced-rules');
+
+    if (!heading || !advancedRules) return;
+
+    // Check if already unlocked (stored in localStorage)
+    if (localStorage.getItem('giftApp.advancedUnlocked') === 'true') {
+        advancedRules.style.display = 'block';
+    }
+
+    heading.style.cursor = 'pointer';
+    heading.addEventListener('click', function() {
+        secretClickCount++;
+
+        // Reset counter after 2 seconds of inactivity
+        clearTimeout(secretClickTimer);
+        secretClickTimer = setTimeout(() => {
+            secretClickCount = 0;
+        }, 2000);
+
+        // Unlock after 5 clicks
+        if (secretClickCount >= 5) {
+            advancedRules.style.display = 'block';
+            localStorage.setItem('giftApp.advancedUnlocked', 'true');
+            secretClickCount = 0;
+        }
+    });
+}
+
+// ===========================================
 // INITIALIZATION
 // ===========================================
 
@@ -1523,6 +1563,7 @@ function init() {
     updateExclusionDropdowns();
     updateInclusionDropdowns();
     updateEditionsList();
+    setupSecretUnlock();
 }
 
 // Run initialization when DOM is ready

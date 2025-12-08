@@ -49,7 +49,7 @@
 
         <!-- Section 4: Shuffle & Assignments -->
         <section id="shuffle-section" class="card">
-            <h2>Shuffle &amp; Assignments</h2>
+            <h2 id="shuffle-heading">Shuffle &amp; Assignments</h2>
             <p class="info-text">Shuffles all persons. Each person is assigned someone from a <strong>different</strong> group.</p>
             <div class="form-row">
                 <label for="select-occasion">Occasion:</label>
@@ -67,8 +67,8 @@
                 <button onclick="runShuffle()" class="primary-btn">Run Shuffle (Create New Edition)</button>
             </div>
 
-            <!-- Hidden exclusions/inclusions feature -->
-            <details class="advanced-settings">
+            <!-- Hidden exclusions/inclusions feature (tap heading 5x to reveal) -->
+            <details class="advanced-settings" id="advanced-rules" style="display: none;">
                 <summary>Advanced: Rules</summary>
 
                 <h4>Exclusions (Cannot give to)</h4>
