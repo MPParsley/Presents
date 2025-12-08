@@ -669,6 +669,11 @@ function updateEditionsList() {
 function showAssignments() {
     const editionId = document.getElementById('select-edition').value;
     const list = document.getElementById('assignments-list');
+    const container = document.getElementById('assignments-container');
+
+    // Remove any existing delete button
+    const existingBtn = document.getElementById('delete-edition-btn');
+    if (existingBtn) existingBtn.remove();
 
     if (!editionId) {
         list.innerHTML = '';
@@ -699,6 +704,33 @@ function showAssignments() {
             </li>
         `;
     }).join('');
+
+    // Add delete button for this edition
+    const deleteBtn = document.createElement('button');
+    deleteBtn.id = 'delete-edition-btn';
+    deleteBtn.className = 'small-btn danger-btn';
+    deleteBtn.style.marginTop = '10px';
+    deleteBtn.textContent = 'Delete this Edition';
+    deleteBtn.onclick = () => deleteEdition(editionId);
+    container.appendChild(deleteBtn);
+}
+
+/**
+ * Delete an edition
+ */
+function deleteEdition(id) {
+    if (!confirm('Are you sure you want to delete this edition?\n\nThis will remove all assignments for this edition.')) {
+        return;
+    }
+
+    let editions = getEditions();
+    editions = editions.filter(e => e.id !== id);
+    saveData(STORAGE_KEYS.EDITIONS, editions);
+
+    // Reset the edition select and refresh
+    document.getElementById('select-edition').value = '';
+    updateEditionsList();
+    showAssignments();
 }
 
 // ===========================================
