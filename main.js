@@ -751,9 +751,11 @@ function deleteEdition(id) {
  * 2. No one can be assigned to themselves
  * 3. No one can be assigned to someone from their OWN group (cross-group assignment)
  * 4. No one can be assigned to the same recipient as in any previous edition
+ * 5. (Optional) Prevent reciprocal gifts: if A→B happened, B→A is forbidden
  */
 function runShuffle() {
     const occasionId = document.getElementById('select-occasion').value;
+    const preventReciprocal = document.getElementById('prevent-reciprocal').checked;
 
     // Validation
     if (!occasionId) {
@@ -798,8 +800,13 @@ function runShuffle() {
 
     previousEditions.forEach(edition => {
         edition.assignments.forEach(a => {
+            // Rule 4: Can't give to the same person again
             if (forbidden[a.giverId]) {
                 forbidden[a.giverId].add(a.recipientId);
+            }
+            // Rule 5: If preventing reciprocals, B can't give to A if A gave to B before
+            if (preventReciprocal && forbidden[a.recipientId]) {
+                forbidden[a.recipientId].add(a.giverId);
             }
         });
     });
@@ -823,8 +830,9 @@ function runShuffle() {
             'This can happen if:\n' +
             '- Not enough persons in different groups\n' +
             '- There have been too many previous editions\n' +
-            '- The constraints are impossible to satisfy\n\n' +
-            'Try adding more persons to different groups or using a different occasion.'
+            '- The constraints are impossible to satisfy\n' +
+            (preventReciprocal ? '- Reciprocal prevention makes it harder to find valid assignments\n' : '') +
+            '\nTry adding more persons to different groups, using a different occasion, or disabling reciprocal prevention.'
         );
         return;
     }
