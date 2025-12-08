@@ -15,7 +15,8 @@ const STORAGE_KEYS = {
     PERSONS: 'giftApp.persons',
     GROUPS: 'giftApp.groups',
     OCCASIONS: 'giftApp.occasions',
-    EDITIONS: 'giftApp.editions'
+    EDITIONS: 'giftApp.editions',
+    EXCLUSIONS: 'giftApp.exclusions'
 };
 
 // ===========================================
@@ -100,13 +101,14 @@ function addPerson() {
     renderPersons();
     renderGroupsUI();
     updatePersonGroupDropdown();
+    updateExclusionDropdowns();
 }
 
 /**
  * Delete a person
  */
 function deletePerson(id) {
-    if (!confirm('Are you sure you want to delete this person? They will also be removed from all groups.')) {
+    if (!confirm('Are you sure you want to delete this person? They will also be removed from all groups and exclusions.')) {
         return;
     }
 
@@ -122,8 +124,15 @@ function deletePerson(id) {
     });
     saveData(STORAGE_KEYS.GROUPS, groups);
 
+    // Remove person from all exclusions
+    let exclusions = getExclusions();
+    exclusions = exclusions.filter(e => e.person1Id !== id && e.person2Id !== id);
+    saveData(STORAGE_KEYS.EXCLUSIONS, exclusions);
+
     renderPersons();
     renderGroupsUI();
+    renderExclusions();
+    updateExclusionDropdowns();
 }
 
 /**
@@ -246,6 +255,8 @@ function savePersonEdit(id) {
 
     renderPersons();
     renderGroupsUI();
+    renderExclusions();
+    updateExclusionDropdowns();
 }
 
 // ===========================================
@@ -608,6 +619,119 @@ function saveOccasionEdit(id) {
 }
 
 // ===========================================
+// EXCLUSIONS MANAGEMENT
+// ===========================================
+
+/**
+ * Get all exclusions
+ * Each exclusion is: { id, person1Id, person2Id }
+ * Exclusions are bidirectional: person1 cannot give to person2 AND person2 cannot give to person1
+ */
+function getExclusions() {
+    return loadData(STORAGE_KEYS.EXCLUSIONS);
+}
+
+/**
+ * Add a new exclusion pair
+ */
+function addExclusion() {
+    const person1Select = document.getElementById('exclusion-person1');
+    const person2Select = document.getElementById('exclusion-person2');
+    const person1Id = person1Select.value;
+    const person2Id = person2Select.value;
+
+    if (!person1Id || !person2Id) {
+        alert('Please select both persons.');
+        return;
+    }
+
+    if (person1Id === person2Id) {
+        alert('Cannot exclude a person from themselves.');
+        return;
+    }
+
+    const exclusions = getExclusions();
+
+    // Check if exclusion already exists (in either direction)
+    const exists = exclusions.some(e =>
+        (e.person1Id === person1Id && e.person2Id === person2Id) ||
+        (e.person1Id === person2Id && e.person2Id === person1Id)
+    );
+
+    if (exists) {
+        alert('This exclusion already exists.');
+        return;
+    }
+
+    exclusions.push({
+        id: generateId(),
+        person1Id: person1Id,
+        person2Id: person2Id
+    });
+
+    saveData(STORAGE_KEYS.EXCLUSIONS, exclusions);
+    person1Select.value = '';
+    person2Select.value = '';
+    renderExclusions();
+}
+
+/**
+ * Remove an exclusion
+ */
+function removeExclusion(id) {
+    let exclusions = getExclusions();
+    exclusions = exclusions.filter(e => e.id !== id);
+    saveData(STORAGE_KEYS.EXCLUSIONS, exclusions);
+    renderExclusions();
+}
+
+/**
+ * Render the exclusions list
+ */
+function renderExclusions() {
+    const list = document.getElementById('exclusions-list');
+    const exclusions = getExclusions();
+    const persons = getPersons();
+
+    if (exclusions.length === 0) {
+        list.innerHTML = '<li><em>No exclusions added.</em></li>';
+        return;
+    }
+
+    list.innerHTML = exclusions.map(e => {
+        const person1 = persons.find(p => p.id === e.person1Id);
+        const person2 = persons.find(p => p.id === e.person2Id);
+        const name1 = person1 ? person1.name : '[Deleted]';
+        const name2 = person2 ? person2.name : '[Deleted]';
+
+        return `
+            <li>
+                <span class="exclusion-text">${escapeHtml(name1)} ↔ ${escapeHtml(name2)}</span>
+                <button class="small-btn danger-btn" onclick="removeExclusion('${e.id}')">Remove</button>
+            </li>
+        `;
+    }).join('');
+}
+
+/**
+ * Update the exclusion person dropdowns
+ */
+function updateExclusionDropdowns() {
+    const select1 = document.getElementById('exclusion-person1');
+    const select2 = document.getElementById('exclusion-person2');
+    const persons = getPersons();
+
+    // Sort persons alphabetically
+    const sortedPersons = [...persons].sort((a, b) => a.name.localeCompare(b.name));
+
+    const options = '<option value="">-- Select Person --</option>' +
+        sortedPersons.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+
+    select1.innerHTML = options;
+    select2.innerHTML = options;
+}
+
+// ===========================================
 // EDITIONS MANAGEMENT
 // ===========================================
 
@@ -811,6 +935,17 @@ function runShuffle() {
         });
     });
 
+    // Rule 6: Apply exclusions (bidirectional - neither can give to the other)
+    const exclusions = getExclusions();
+    exclusions.forEach(e => {
+        if (forbidden[e.person1Id]) {
+            forbidden[e.person1Id].add(e.person2Id);
+        }
+        if (forbidden[e.person2Id]) {
+            forbidden[e.person2Id].add(e.person1Id);
+        }
+    });
+
     // Try to find a valid assignment using random permutations
     // We'll attempt up to MAX_ATTEMPTS times before giving up
     const MAX_ATTEMPTS = 1000;
@@ -975,7 +1110,8 @@ function exportDataJSON() {
             persons: getPersons(),
             groups: getGroups(),
             occasions: getOccasions(),
-            editions: getEditions()
+            editions: getEditions(),
+            exclusions: getExclusions()
         };
 
         const json = JSON.stringify(data, null, 2);
@@ -1036,17 +1172,20 @@ function importDataJSON(event) {
                 saveData(STORAGE_KEYS.GROUPS, data.groups);
                 saveData(STORAGE_KEYS.OCCASIONS, data.occasions);
                 saveData(STORAGE_KEYS.EDITIONS, data.editions);
+                saveData(STORAGE_KEYS.EXCLUSIONS, data.exclusions || []);
             } else {
                 // Merge data (add new items, skip duplicates by ID)
                 const existingPersons = getPersons();
                 const existingGroups = getGroups();
                 const existingOccasions = getOccasions();
                 const existingEditions = getEditions();
+                const existingExclusions = getExclusions();
 
                 const existingPersonIds = new Set(existingPersons.map(p => p.id));
                 const existingGroupIds = new Set(existingGroups.map(g => g.id));
                 const existingOccasionIds = new Set(existingOccasions.map(o => o.id));
                 const existingEditionIds = new Set(existingEditions.map(e => e.id));
+                const existingExclusionIds = new Set(existingExclusions.map(e => e.id));
 
                 // Add new items
                 data.persons.forEach(p => {
@@ -1069,19 +1208,29 @@ function importDataJSON(event) {
                         existingEditions.push(e);
                     }
                 });
+                if (data.exclusions) {
+                    data.exclusions.forEach(e => {
+                        if (!existingExclusionIds.has(e.id)) {
+                            existingExclusions.push(e);
+                        }
+                    });
+                }
 
                 saveData(STORAGE_KEYS.PERSONS, existingPersons);
                 saveData(STORAGE_KEYS.GROUPS, existingGroups);
                 saveData(STORAGE_KEYS.OCCASIONS, existingOccasions);
                 saveData(STORAGE_KEYS.EDITIONS, existingEditions);
+                saveData(STORAGE_KEYS.EXCLUSIONS, existingExclusions);
             }
 
             // Refresh UI
             renderPersons();
             renderGroupsUI();
             renderOccasions();
+            renderExclusions();
             updateSelectDropdowns();
             updatePersonGroupDropdown();
+            updateExclusionDropdowns();
             updateEditionsList();
 
             alert('Data imported successfully!');
@@ -1104,7 +1253,7 @@ function importDataJSON(event) {
  * Reset all data with confirmation
  */
 function resetAllData() {
-    if (!confirm('Are you sure you want to delete ALL data?\n\nThis will remove all persons, groups, occasions, and editions.\n\nThis action cannot be undone!')) {
+    if (!confirm('Are you sure you want to delete ALL data?\n\nThis will remove all persons, groups, occasions, editions, and exclusions.\n\nThis action cannot be undone!')) {
         return;
     }
 
@@ -1117,13 +1266,16 @@ function resetAllData() {
     localStorage.removeItem(STORAGE_KEYS.GROUPS);
     localStorage.removeItem(STORAGE_KEYS.OCCASIONS);
     localStorage.removeItem(STORAGE_KEYS.EDITIONS);
+    localStorage.removeItem(STORAGE_KEYS.EXCLUSIONS);
 
     // Re-render everything
     renderPersons();
     renderGroupsUI();
     renderOccasions();
+    renderExclusions();
     updateSelectDropdowns();
     updatePersonGroupDropdown();
+    updateExclusionDropdowns();
     updateEditionsList();
 
     alert('All data has been reset.');
@@ -1153,8 +1305,10 @@ function init() {
     renderPersons();
     renderGroupsUI();
     renderOccasions();
+    renderExclusions();
     updateSelectDropdowns();
     updatePersonGroupDropdown();
+    updateExclusionDropdowns();
     updateEditionsList();
 }
 

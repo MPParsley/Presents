@@ -67,6 +67,23 @@
                 <button onclick="runShuffle()" class="primary-btn">Run Shuffle (Create New Edition)</button>
             </div>
 
+            <!-- Hidden exclusions feature -->
+            <details class="advanced-settings">
+                <summary>Advanced: Exclusions</summary>
+                <p class="help-text">Add pairs of people who should NOT be assigned to each other (e.g., couples, roommates).</p>
+                <div class="form-row">
+                    <select id="exclusion-person1">
+                        <option value="">-- Person 1 --</option>
+                    </select>
+                    <span class="exclusion-arrow">↔</span>
+                    <select id="exclusion-person2">
+                        <option value="">-- Person 2 --</option>
+                    </select>
+                    <button onclick="addExclusion()">Add</button>
+                </div>
+                <ul id="exclusions-list"></ul>
+            </details>
+
             <div id="editions-container">
                 <h3>Editions</h3>
                 <select id="select-edition" onchange="showAssignments()">
