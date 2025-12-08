@@ -57,11 +57,13 @@ function getPersons() {
 }
 
 /**
- * Add a new person
+ * Add a new person (optionally to a group)
  */
 function addPerson() {
     const nameInput = document.getElementById('person-name');
+    const groupSelect = document.getElementById('person-group');
     const name = nameInput.value.trim();
+    const groupId = groupSelect.value;
 
     if (!name) {
         alert('Please enter a person name.');
@@ -76,15 +78,28 @@ function addPerson() {
         return;
     }
 
+    const personId = generateId();
     persons.push({
-        id: generateId(),
+        id: personId,
         name: name
     });
 
     saveData(STORAGE_KEYS.PERSONS, persons);
+
+    // If a group was selected, add the person to that group
+    if (groupId) {
+        const groups = getGroups();
+        const group = groups.find(g => g.id === groupId);
+        if (group) {
+            group.memberIds.push(personId);
+            saveData(STORAGE_KEYS.GROUPS, groups);
+        }
+    }
+
     nameInput.value = '';
     renderPersons();
-    renderGroupsUI(); // Update member dropdowns
+    renderGroupsUI();
+    updatePersonGroupDropdown();
 }
 
 /**
@@ -175,6 +190,7 @@ function addGroup() {
     nameInput.value = '';
     renderGroupsUI();
     updateSelectDropdowns();
+    updatePersonGroupDropdown();
 }
 
 /**
@@ -197,6 +213,7 @@ function deleteGroup(id) {
 
     renderGroupsUI();
     updateSelectDropdowns();
+    updatePersonGroupDropdown();
     updateEditionsList();
 }
 
@@ -680,6 +697,20 @@ function updateSelectDropdowns() {
     }
 }
 
+/**
+ * Update the group dropdown in the "Add Person" form
+ */
+function updatePersonGroupDropdown() {
+    const groupSelect = document.getElementById('person-group');
+    const groups = getGroups();
+
+    // Sort groups alphabetically
+    const sortedGroups = [...groups].sort((a, b) => a.name.localeCompare(b.name));
+
+    groupSelect.innerHTML = '<option value="">-- No group --</option>' +
+        sortedGroups.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
+}
+
 // ===========================================
 // RESET DATA
 // ===========================================
@@ -707,6 +738,7 @@ function resetAllData() {
     renderGroupsUI();
     renderOccasions();
     updateSelectDropdowns();
+    updatePersonGroupDropdown();
     updateEditionsList();
 
     alert('All data has been reset.');
@@ -737,6 +769,7 @@ function init() {
     renderGroupsUI();
     renderOccasions();
     updateSelectDropdowns();
+    updatePersonGroupDropdown();
     updateEditionsList();
 }
 
