@@ -360,8 +360,22 @@ footer {
     }
 
     input[type="text"],
-    select,
-    button {
+    select {
         width: 100%;
+    }
+
+    .form-row > button:not(.small-btn) {
+        width: 100%;
+    }
+
+    /* Keep small buttons inline */
+    .item-buttons {
+        display: flex;
+        gap: 5px;
+        flex-shrink: 0;
+    }
+
+    button.small-btn {
+        width: auto;
     }
 }

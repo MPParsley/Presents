@@ -415,7 +415,9 @@ function renderGroupsUI() {
             : members.map(m => `
                 <li>
                     <span class="item-name">${escapeHtml(m.name)}</span>
-                    <button class="small-btn danger-btn" onclick="removeMemberFromGroup('${group.id}', '${m.id}')">Remove</button>
+                    <span class="item-buttons">
+                        <button class="small-btn danger-btn" onclick="removeMemberFromGroup('${group.id}', '${m.id}')">Delete</button>
+                    </span>
                 </li>
             `).join('');
 
@@ -718,7 +720,9 @@ function renderExclusions() {
         return `
             <li>
                 <span class="exclusion-text">${escapeHtml(name1)} ↔ ${escapeHtml(name2)}</span>
-                <button class="small-btn danger-btn" onclick="removeExclusion('${e.id}')">Remove</button>
+                <span class="item-buttons">
+                    <button class="small-btn danger-btn" onclick="removeExclusion('${e.id}')">Delete</button>
+                </span>
             </li>
         `;
     }).join('');
@@ -834,7 +838,9 @@ function renderInclusions() {
         return `
             <li>
                 <span class="inclusion-text">${escapeHtml(giverName)} → ${escapeHtml(recipientName)}</span>
-                <button class="small-btn danger-btn" onclick="removeInclusion('${i.id}')">Remove</button>
+                <span class="item-buttons">
+                    <button class="small-btn danger-btn" onclick="removeInclusion('${i.id}')">Delete</button>
+                </span>
             </li>
         `;
     }).join('');
