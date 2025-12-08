@@ -926,9 +926,13 @@ function showAssignments() {
     const list = document.getElementById('assignments-list');
     const container = document.getElementById('assignments-container');
 
-    // Remove any existing delete button
+    // Remove any existing buttons
     const existingBtn = document.getElementById('delete-edition-btn');
     if (existingBtn) existingBtn.remove();
+    const existingShareBtn = document.getElementById('share-links-btn');
+    if (existingShareBtn) existingShareBtn.remove();
+    const existingSwapInfo = document.getElementById('swap-info');
+    if (existingSwapInfo) existingSwapInfo.remove();
 
     if (!editionId) {
         list.innerHTML = '';
@@ -945,6 +949,7 @@ function showAssignments() {
 
     const persons = getPersons();
     const groups = getGroups();
+    const isAdvancedUnlocked = localStorage.getItem('giftApp.advancedUnlocked') === 'true';
 
     // Build a map: personId -> groupName
     const personToGroupName = {};
@@ -954,7 +959,7 @@ function showAssignments() {
         });
     });
 
-    list.innerHTML = edition.assignments.map(a => {
+    list.innerHTML = edition.assignments.map((a, index) => {
         const giver = persons.find(p => p.id === a.giverId);
         const recipient = persons.find(p => p.id === a.recipientId);
         const giverName = giver ? giver.name : '[Deleted Person]';
@@ -962,14 +967,28 @@ function showAssignments() {
         const giverGroup = personToGroupName[a.giverId] || 'No group';
         const recipientGroup = personToGroupName[a.recipientId] || 'No group';
 
+        const swapCheckbox = isAdvancedUnlocked
+            ? `<input type="checkbox" class="swap-checkbox" data-index="${index}" onchange="updateSwapSelection('${editionId}')">`
+            : '';
+
         return `
             <li>
+                ${swapCheckbox}
                 <span>${escapeHtml(giverName)} <small class="group-tag">(${escapeHtml(giverGroup)})</small></span>
                 <span class="arrow">→</span>
                 <span>${escapeHtml(recipientName)} <small class="group-tag">(${escapeHtml(recipientGroup)})</small></span>
             </li>
         `;
     }).join('');
+
+    // Add swap info if advanced unlocked
+    if (isAdvancedUnlocked) {
+        const swapInfo = document.createElement('div');
+        swapInfo.id = 'swap-info';
+        swapInfo.className = 'swap-info';
+        swapInfo.innerHTML = '<small>Select 2 assignments to swap recipients</small>';
+        container.insertBefore(swapInfo, list);
+    }
 
     // Add delete button for this edition
     const deleteBtn = document.createElement('button');
@@ -1127,6 +1146,60 @@ function closeShareModal(event) {
     if (event && event.target !== event.currentTarget) return;
     const modal = document.querySelector('.share-modal-overlay');
     if (modal) modal.remove();
+}
+
+/**
+ * Update swap selection when checkboxes change
+ */
+function updateSwapSelection(editionId) {
+    const checkboxes = document.querySelectorAll('.swap-checkbox:checked');
+    const swapInfo = document.getElementById('swap-info');
+
+    if (checkboxes.length === 2) {
+        const index1 = parseInt(checkboxes[0].dataset.index);
+        const index2 = parseInt(checkboxes[1].dataset.index);
+
+        if (confirm('Swap the recipients of these two assignments?')) {
+            swapAssignments(editionId, index1, index2);
+        } else {
+            // Uncheck all
+            document.querySelectorAll('.swap-checkbox').forEach(cb => cb.checked = false);
+        }
+    } else if (checkboxes.length > 2) {
+        // Uncheck the last one
+        checkboxes[checkboxes.length - 1].checked = false;
+    }
+
+    // Update info text
+    if (swapInfo) {
+        const count = document.querySelectorAll('.swap-checkbox:checked').length;
+        if (count === 0) {
+            swapInfo.innerHTML = '<small>Select 2 assignments to swap recipients</small>';
+        } else if (count === 1) {
+            swapInfo.innerHTML = '<small>Select 1 more assignment to swap</small>';
+        }
+    }
+}
+
+/**
+ * Swap recipients between two assignments
+ */
+function swapAssignments(editionId, index1, index2) {
+    const editions = getEditions();
+    const edition = editions.find(e => e.id === editionId);
+
+    if (!edition) return;
+
+    // Swap the recipients
+    const temp = edition.assignments[index1].recipientId;
+    edition.assignments[index1].recipientId = edition.assignments[index2].recipientId;
+    edition.assignments[index2].recipientId = temp;
+
+    // Save
+    saveData(STORAGE_KEYS.EDITIONS, editions);
+
+    // Refresh display
+    showAssignments();
 }
 
 // ===========================================
