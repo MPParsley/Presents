@@ -1055,6 +1055,15 @@ function showShareLinks(editionId) {
     const occasionName = occasion ? occasion.name : '';
 
     const persons = getPersons();
+    const groups = getGroups();
+
+    // Build a map: personId -> groupName
+    const personToGroup = {};
+    groups.forEach(g => {
+        g.memberIds.forEach(pId => {
+            personToGroup[pId] = g.name;
+        });
+    });
 
     // Generate links for each assignment
     const links = edition.assignments.map(a => {
@@ -1062,17 +1071,60 @@ function showShareLinks(editionId) {
         const recipient = persons.find(p => p.id === a.recipientId);
         const giverName = giver ? giver.name : '[Unknown]';
         const recipientName = recipient ? recipient.name : '[Unknown]';
+        const groupName = personToGroup[a.giverId] || 'No group';
         const link = generateShareLink(giverName, recipientName, occasionName);
-        return { giverName, link };
+        return { giverName, groupName, link };
     });
 
-    // Sort by name
-    links.sort((a, b) => a.giverName.localeCompare(b.giverName));
+    // Group links by group name
+    const linksByGroup = {};
+    links.forEach(l => {
+        if (!linksByGroup[l.groupName]) {
+            linksByGroup[l.groupName] = [];
+        }
+        linksByGroup[l.groupName].push(l);
+    });
+
+    // Sort groups and links within groups
+    const sortedGroupNames = Object.keys(linksByGroup).sort();
+    sortedGroupNames.forEach(groupName => {
+        linksByGroup[groupName].sort((a, b) => a.giverName.localeCompare(b.giverName));
+    });
 
     // Create formatted text for "copy all"
-    const allLinksText = links.map(l => `${l.giverName}:\n${l.link}`).join('\n\n');
+    const allLinksText = links
+        .sort((a, b) => a.giverName.localeCompare(b.giverName))
+        .map(l => `${l.giverName}:\n${l.link}`).join('\n\n');
 
-    // Create modal content
+    // Create formatted text per group
+    const groupLinksText = {};
+    sortedGroupNames.forEach(groupName => {
+        groupLinksText[groupName] = linksByGroup[groupName]
+            .map(l => `${l.giverName}:\n${l.link}`).join('\n\n');
+    });
+
+    // Store for copy functions
+    window._allShareLinks = allLinksText;
+    window._groupShareLinks = groupLinksText;
+
+    // Create modal content with groups
+    const groupsHtml = sortedGroupNames.map(groupName => `
+        <div class="share-group">
+            <div class="share-group-header">
+                <strong>${escapeHtml(groupName)}</strong>
+                <button class="small-btn" onclick="copyGroupLinks('${escapeHtml(groupName)}', this)">Copy Group</button>
+            </div>
+            <ul class="share-links-list">
+                ${linksByGroup[groupName].map(l => `
+                    <li>
+                        <span class="share-name">${escapeHtml(l.giverName)}</span>
+                        <button class="small-btn" onclick="copyShareLink('${escapeHtml(l.link)}', this)">Copy</button>
+                    </li>
+                `).join('')}
+            </ul>
+        </div>
+    `).join('');
+
     const modalHtml = `
         <div class="share-modal-overlay" onclick="closeShareModal(event)">
             <div class="share-modal" onclick="event.stopPropagation()">
@@ -1081,21 +1133,11 @@ function showShareLinks(editionId) {
                 <div class="share-actions">
                     <button class="small-btn primary-btn" onclick="copyAllShareLinks(this)">Copy All Links</button>
                 </div>
-                <ul class="share-links-list">
-                    ${links.map(l => `
-                        <li>
-                            <span class="share-name">${escapeHtml(l.giverName)}</span>
-                            <button class="small-btn" onclick="copyShareLink('${escapeHtml(l.link)}', this)">Copy</button>
-                        </li>
-                    `).join('')}
-                </ul>
-                <button class="small-btn" onclick="closeShareModal()">Close</button>
+                ${groupsHtml}
+                <button class="small-btn" onclick="closeShareModal()" style="margin-top: 15px;">Close</button>
             </div>
         </div>
     `;
-
-    // Store all links for copy all function
-    window._allShareLinks = allLinksText;
 
     // Remove existing modal if any
     const existing = document.querySelector('.share-modal-overlay');
@@ -1133,6 +1175,25 @@ function copyAllShareLinks(button) {
         button.textContent = 'All Copied!';
         setTimeout(() => {
             button.textContent = originalText;
+        }, 2000);
+    }).catch(err => {
+        alert('Failed to copy: ' + err);
+    });
+}
+
+/**
+ * Copy all share links for a specific group
+ */
+function copyGroupLinks(groupName, button) {
+    if (!window._groupShareLinks || !window._groupShareLinks[groupName]) return;
+
+    navigator.clipboard.writeText(window._groupShareLinks[groupName]).then(() => {
+        const originalText = button.textContent;
+        button.textContent = 'Copied!';
+        button.classList.add('primary-btn');
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.classList.remove('primary-btn');
         }, 2000);
     }).catch(err => {
         alert('Failed to copy: ' + err);

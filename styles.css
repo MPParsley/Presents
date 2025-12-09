@@ -445,6 +445,30 @@ footer {
     border-bottom: 1px solid #eee;
 }
 
+.share-group {
+    margin-bottom: 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.share-group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: #f5f5f5;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.share-group .share-links-list {
+    margin: 0;
+}
+
+.share-group .share-links-list li {
+    padding: 8px 12px;
+}
+
 /* Swap feature */
 .swap-info {
     color: #666;
