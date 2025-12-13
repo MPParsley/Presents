@@ -246,6 +246,12 @@ export async function registerParticipant(
 		throw new Error('Not logged in');
 	}
 
+	// Check if already registered
+	const existingParticipants = await fetchParticipants(registrationsUrl);
+	if (existingParticipants.some((p) => p.webId === participantWebId)) {
+		throw new Error('Je bent al ingeschreven voor deze gelegenheid');
+	}
+
 	const regId = 'reg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
 	const name = participantWebId.replace('https://', '').split('.')[0];
 
@@ -292,9 +298,6 @@ export async function fetchParticipants(registrationsUrl: string): Promise<Parti
 	}
 
 	const turtle = await response.text();
-	console.log('[fetchParticipants] Container URL:', registrationsUrl);
-	console.log('[fetchParticipants] Container turtle:', turtle);
-
 	const resourceSet = new Set<string>();
 
 	// Find all registration .ttl files directly (simpler and more reliable)
@@ -308,8 +311,6 @@ export async function fetchParticipants(registrationsUrl: string): Promise<Parti
 	}
 
 	const resources = Array.from(resourceSet);
-	console.log('[fetchParticipants] Resources to fetch:', resources);
-
 	const participants: Participant[] = [];
 	for (const resourceUrl of resources) {
 		try {
@@ -319,9 +320,7 @@ export async function fetchParticipants(registrationsUrl: string): Promise<Parti
 
 			if (regResponse.ok) {
 				const regTurtle = await regResponse.text();
-				console.log('[fetchParticipants] Registration turtle:', regTurtle);
 				const participant = parseRegistrationTurtle(regTurtle);
-				console.log('[fetchParticipants] Parsed participant:', participant);
 				if (participant.webId) {
 					participants.push(participant);
 				}
@@ -331,6 +330,14 @@ export async function fetchParticipants(registrationsUrl: string): Promise<Parti
 		}
 	}
 
-	console.log('[fetchParticipants] Final participants:', participants);
-	return participants;
+	// Deduplicate by webId, keeping the most recent registration
+	const uniqueByWebId = new Map<string, Participant>();
+	for (const p of participants) {
+		const existing = uniqueByWebId.get(p.webId);
+		if (!existing || (p.registeredAt && existing.registeredAt && p.registeredAt > existing.registeredAt)) {
+			uniqueByWebId.set(p.webId, p);
+		}
+	}
+
+	return Array.from(uniqueByWebId.values());
 }
