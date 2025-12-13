@@ -56,13 +56,27 @@ const RDF_NS = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
  */
 async function initSolid() {
     try {
+        const currentParams = new URLSearchParams(window.location.search);
+        const isOidcCallback = currentParams.has('code') || currentParams.has('state');
+
+        // Store current URL before handleIncomingRedirect potentially modifies it
+        const originalUrl = window.location.href;
+
         // Handle incoming redirect from Identity Provider
         await handleIncomingRedirect({
             restorePreviousSession: true
         });
 
-        // Restore query parameters that were saved before login redirect
-        restoreQueryParams();
+        if (isOidcCallback) {
+            // We're returning from OIDC - restore saved query params
+            restoreQueryParams();
+        } else {
+            // Not from OIDC - check if URL was modified and restore it
+            if (window.location.href !== originalUrl) {
+                console.log('URL was modified by handleIncomingRedirect, restoring:', originalUrl);
+                window.history.replaceState({}, '', originalUrl);
+            }
+        }
 
         // Update UI based on session state
         updateSolidUI();
