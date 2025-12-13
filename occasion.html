@@ -298,6 +298,16 @@
         <p>Gift Name Shuffler &mdash; Een eenvoudige app voor cadeautjes uitwisseling.</p>
     </footer>
 
+    <!-- CRITICAL: Capture occasion URL BEFORE any module scripts run (they are deferred) -->
+    <script>
+        (function() {
+            const occasionUrl = new URLSearchParams(window.location.search).get('occasion');
+            if (occasionUrl) {
+                sessionStorage.setItem('current_occasion_url', occasionUrl);
+                console.log('[SYNC] Captured occasion URL:', occasionUrl);
+            }
+        })();
+    </script>
     <script type="module" src="solid.js"></script>
     <script type="module">
         // ===========================================
@@ -310,28 +320,16 @@
         let occasionLoaded = false;
         let isLoadingOccasion = false;
 
-        // Capture occasion URL immediately before Solid library can modify it
-        const initialOccasionUrl = new URLSearchParams(window.location.search).get('occasion');
-        if (initialOccasionUrl) {
-            // Store in sessionStorage so it survives any redirects
-            sessionStorage.setItem('current_occasion_url', initialOccasionUrl);
-            console.log('Captured occasion URL:', initialOccasionUrl);
-        }
-
         /**
-         * Get occasion URL - uses captured value or sessionStorage
+         * Get occasion URL - uses sessionStorage (set by sync script) or current URL
          */
         function getOccasionUrl() {
-            // First check if we captured it at page load
-            if (initialOccasionUrl) {
-                return initialOccasionUrl;
-            }
-            // Then check sessionStorage (survives redirects)
+            // First check sessionStorage (set by sync script, survives redirects)
             const stored = sessionStorage.getItem('current_occasion_url');
             if (stored) {
                 return stored;
             }
-            // Finally check current URL
+            // Fall back to current URL
             const params = new URLSearchParams(window.location.search);
             return params.get('occasion');
         }
