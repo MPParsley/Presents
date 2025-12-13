@@ -13,18 +13,18 @@
  */
 
 // ===========================================
-// IMPORTS FROM JSDELIVR CDN
+// IMPORTS FROM SKYPACK CDN
 // ===========================================
 
-// Using jsdelivr CDN with older stable versions
+// Using Skypack CDN (same as working hello world example)
 import {
     login,
     logout,
     handleIncomingRedirect,
     getDefaultSession
-} from "https://cdn.jsdelivr.net/npm/@inrupt/solid-client-authn-browser@1.11.2/dist/index.es.js";
+} from "https://cdn.skypack.dev/@inrupt/solid-client-authn-browser";
 
-import * as solidClient from "https://cdn.jsdelivr.net/npm/@inrupt/solid-client@1.23.0/dist/index.es.js";
+import * as solidClient from "https://cdn.skypack.dev/@inrupt/solid-client";
 
 // ===========================================
 // CONSTANTS
