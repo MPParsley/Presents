@@ -109,11 +109,13 @@ function restoreQueryParams() {
     // Clear saved params
     sessionStorage.removeItem('solid_redirect_params');
 
-    // If we need to restore, update the URL without reloading
+    // If we need to restore, redirect to the correct URL
     if (needsRestore) {
         const newUrl = window.location.pathname + '?' + currentParams.toString();
-        window.history.replaceState({}, '', newUrl);
-        console.log('Restored query params:', newUrl);
+        console.log('Restoring query params, redirecting to:', newUrl);
+        // Use location.replace to avoid back-button issues
+        window.location.replace(newUrl);
+        return; // Stop execution, page will reload
     }
 }
 
