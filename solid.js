@@ -42,15 +42,15 @@ const RDF_NS = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
  * Initialize SOLID - check for existing session and handle redirects
  */
 async function initSolid() {
-    // Check if Inrupt libraries are loaded
-    if (typeof solidClientAuthentication === 'undefined') {
+    // Check if Inrupt libraries are loaded (CDN bundles export as solidClientAuthn and solidClient)
+    if (typeof solidClientAuthn === 'undefined') {
         console.warn('SOLID libraries not loaded - SOLID features disabled');
         return;
     }
 
     try {
         // Handle incoming redirect from Identity Provider
-        await solidClientAuthentication.handleIncomingRedirect({
+        await solidClientAuthn.handleIncomingRedirect({
             restorePreviousSession: true
         });
 
@@ -65,10 +65,10 @@ async function initSolid() {
  * Get the current SOLID session
  */
 function getSolidSession() {
-    if (typeof solidClientAuthentication === 'undefined') {
+    if (typeof solidClientAuthn === 'undefined') {
         return null;
     }
-    return solidClientAuthentication.getDefaultSession();
+    return solidClientAuthn.getDefaultSession();
 }
 
 /**
@@ -109,7 +109,7 @@ async function loginToSolid() {
     }
 
     try {
-        await solidClientAuthentication.login({
+        await solidClientAuthn.login({
             oidcIssuer: providerUrl,
             redirectUrl: window.location.href,
             clientName: 'Gift Name Shuffler'
@@ -125,7 +125,7 @@ async function loginToSolid() {
  */
 async function logoutFromSolid() {
     try {
-        await solidClientAuthentication.logout();
+        await solidClientAuthn.logout();
         updateSolidUI();
     } catch (error) {
         console.error('Logout error:', error);
