@@ -598,23 +598,37 @@
                 }
 
                 const turtle = await response.text();
+                console.log('Occasions container turtle:', turtle);
 
                 // Find all containers (occasions) - look for ldp:contains
-                const containerRegex = /ldp:contains\s+<([^>]+)>/g;
+                // Handle both direct matches and comma-separated lists
                 const occasions = [];
-                let match;
 
-                while ((match = containerRegex.exec(turtle)) !== null) {
-                    const folderUrl = match[1];
-                    // Skip if it's not a folder (folders typically don't have extensions)
-                    if (!folderUrl.includes('.')) {
-                        const fullUrl = folderUrl.startsWith('http') ? folderUrl : occasionsContainerUrl + folderUrl;
-                        occasions.push({
-                            name: folderUrl.replace(/\/$/, ''),
-                            url: fullUrl + (fullUrl.endsWith('/') ? '' : '/') + 'occasion.ttl'
-                        });
+                // First, find all ldp:contains sections (may have multiple items separated by commas)
+                const containsRegex = /ldp:contains\s+([^;.]+)/g;
+                let containsMatch;
+
+                while ((containsMatch = containsRegex.exec(turtle)) !== null) {
+                    const containsSection = containsMatch[1];
+                    // Extract all <url> patterns from this section
+                    const urlRegex = /<([^>]+)>/g;
+                    let urlMatch;
+
+                    while ((urlMatch = urlRegex.exec(containsSection)) !== null) {
+                        const itemUrl = urlMatch[1];
+                        // Folders end with / - this is more reliable than checking for .
+                        if (itemUrl.endsWith('/')) {
+                            const fullUrl = itemUrl.startsWith('http') ? itemUrl : occasionsContainerUrl + itemUrl;
+                            const name = itemUrl.replace(/\/$/, '').split('/').pop();
+                            occasions.push({
+                                name: name,
+                                url: fullUrl + 'occasion.ttl'
+                            });
+                        }
                     }
                 }
+
+                console.log('Found occasions:', occasions);
 
                 if (occasions.length === 0) {
                     container.innerHTML = '<p><em>Je hebt nog geen gelegenheden aangemaakt.</em></p>';
