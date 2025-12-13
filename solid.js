@@ -13,18 +13,18 @@
  */
 
 // ===========================================
-// IMPORTS FROM SKYPACK CDN
+// IMPORTS FROM ESM.SH CDN
 // ===========================================
 
+// Using esm.sh CDN which handles modern packages better than Skypack
 import {
     login,
     logout,
     handleIncomingRedirect,
     getDefaultSession
-} from "https://cdn.skypack.dev/@inrupt/solid-client-authn-browser";
+} from "https://esm.sh/@inrupt/solid-client-authn-browser@2";
 
-// Import solid-client as a module (Skypack doesn't export all named exports properly)
-import * as solidClient from "https://cdn.skypack.dev/@inrupt/solid-client";
+import * as solidClient from "https://esm.sh/@inrupt/solid-client@2";
 
 // ===========================================
 // CONSTANTS
