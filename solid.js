@@ -113,9 +113,17 @@ async function loginToSolid() {
     }
 
     try {
+        // Build redirect URL without hash fragment (not allowed by Solid OIDC)
+        // Also remove reserved query params 'code' and 'state'
+        const url = new URL(window.location.href);
+        url.hash = ''; // Remove hash fragment
+        url.searchParams.delete('code');
+        url.searchParams.delete('state');
+        const redirectUrl = url.toString();
+
         await login({
             oidcIssuer: providerUrl,
-            redirectUrl: window.location.href,
+            redirectUrl: redirectUrl,
             clientName: 'Gift Name Shuffler'
         });
     } catch (error) {
