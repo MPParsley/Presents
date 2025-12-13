@@ -299,6 +299,8 @@
         // Current occasion data
         let currentOccasion = null;
         let isAdmin = false;
+        let occasionLoaded = false;
+        let isLoadingOccasion = false;
 
         /**
          * Get occasion URL from query parameter
@@ -434,10 +436,15 @@
          * Load occasion data from URL
          */
         async function loadOccasion(occasionUrl) {
+            // Prevent multiple simultaneous loads
+            if (isLoadingOccasion) return;
+            isLoadingOccasion = true;
+
             showLoading();
 
             try {
                 const occasion = await fetchOccasion(occasionUrl);
+                occasionLoaded = true;
                 currentOccasion = occasion;
 
                 // Update header
@@ -489,6 +496,7 @@
                 showError('Kon gelegenheid niet laden: ' + error.message);
             } finally {
                 hideLoading();
+                isLoadingOccasion = false;
             }
         }
 
@@ -560,7 +568,10 @@
                 // Viewing an occasion
                 document.getElementById('create-section').style.display = 'none';
                 document.getElementById('no-occasion-section').style.display = 'none';
-                loadOccasion(occasionUrl);
+                // Only load once
+                if (!occasionLoaded && !isLoadingOccasion) {
+                    loadOccasion(occasionUrl);
+                }
             } else if (isLoggedIn) {
                 // No occasion, but logged in - show create form
                 document.getElementById('create-section').style.display = 'block';
