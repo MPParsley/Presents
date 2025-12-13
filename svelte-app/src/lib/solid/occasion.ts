@@ -91,6 +91,80 @@ async function setPublicWriteACL(containerUrl: string, ownerWebId: string): Prom
 }
 
 /**
+ * Update an occasion in the user's Pod
+ */
+export async function updateOccasion(
+	occasionUrl: string,
+	data: { name: string; date?: string | null; adminWebId: string }
+): Promise<void> {
+	const session = auth.getSession();
+	if (!session.info.isLoggedIn) {
+		throw new Error('Not logged in');
+	}
+
+	const occasionTurtle = generateOccasionTurtle(data);
+	const response = await session.fetch(occasionUrl, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'text/turtle' },
+		body: occasionTurtle
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to update occasion: ${response.status}`);
+	}
+}
+
+/**
+ * Delete an occasion and all its registrations
+ */
+export async function deleteOccasion(occasionUrl: string): Promise<void> {
+	const session = auth.getSession();
+	if (!session.info.isLoggedIn) {
+		throw new Error('Not logged in');
+	}
+
+	// Get the folder URL from occasion.ttl URL
+	const folderUrl = occasionUrl.replace('occasion.ttl', '');
+	const registrationsUrl = folderUrl + 'registrations/';
+
+	// First, delete all registrations
+	try {
+		const regResponse = await session.fetch(registrationsUrl, {
+			headers: { Accept: 'text/turtle' }
+		});
+
+		if (regResponse.ok) {
+			const turtle = await regResponse.text();
+			const resourceRegex = /ldp:contains\s+<([^>]+)>/g;
+			let match;
+
+			while ((match = resourceRegex.exec(turtle)) !== null) {
+				const resourceUrl = match[1];
+				const fullUrl = resourceUrl.startsWith('http') ? resourceUrl : registrationsUrl + resourceUrl;
+				await session.fetch(fullUrl, { method: 'DELETE' });
+			}
+		}
+
+		// Delete registrations container ACL
+		await session.fetch(registrationsUrl + '.acl', { method: 'DELETE' });
+
+		// Delete registrations container
+		await session.fetch(registrationsUrl, { method: 'DELETE' });
+	} catch (e) {
+		console.warn('Could not delete registrations:', e);
+	}
+
+	// Delete occasion.ttl
+	const occasionResponse = await session.fetch(occasionUrl, { method: 'DELETE' });
+	if (!occasionResponse.ok && occasionResponse.status !== 404) {
+		throw new Error(`Failed to delete occasion: ${occasionResponse.status}`);
+	}
+
+	// Delete the folder
+	await session.fetch(folderUrl, { method: 'DELETE' });
+}
+
+/**
  * Fetch occasion data from URL
  */
 export async function fetchOccasion(occasionUrl: string): Promise<Occasion> {

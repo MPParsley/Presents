@@ -11,6 +11,8 @@
 		fetchMyOccasions,
 		registerParticipant,
 		fetchParticipants,
+		updateOccasion,
+		deleteOccasion,
 		type Occasion,
 		type Participant
 	} from '$lib/solid';
@@ -28,6 +30,11 @@
 	// Form state
 	let newOccasionName = $state('');
 	let newOccasionDate = $state('');
+
+	// Edit mode state
+	let isEditing = $state(false);
+	let editName = $state('');
+	let editDate = $state('');
 
 	// Capture occasion URL from query params (stored in sessionStorage for OIDC redirects)
 	onMount(() => {
@@ -149,6 +156,66 @@
 		});
 	}
 
+	function startEditing() {
+		if (currentOccasion) {
+			editName = currentOccasion.name;
+			editDate = currentOccasion.date || '';
+			isEditing = true;
+		}
+	}
+
+	function cancelEditing() {
+		isEditing = false;
+		editName = '';
+		editDate = '';
+	}
+
+	async function handleSaveEdit() {
+		if (!editName.trim() || !occasionUrl || !currentOccasion?.adminWebId) {
+			alert('Vul een naam in.');
+			return;
+		}
+
+		isLoading = true;
+		error = null;
+
+		try {
+			await updateOccasion(occasionUrl, {
+				name: editName.trim(),
+				date: editDate || null,
+				adminWebId: currentOccasion.adminWebId
+			});
+
+			// Reload occasion data
+			await loadOccasion(occasionUrl);
+			isEditing = false;
+		} catch (e) {
+			error = 'Kon gelegenheid niet bijwerken: ' + (e as Error).message;
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	async function handleDelete() {
+		if (!occasionUrl) return;
+
+		if (!confirm('Weet je zeker dat je deze gelegenheid wilt verwijderen? Dit kan niet ongedaan worden gemaakt.')) {
+			return;
+		}
+
+		isLoading = true;
+		error = null;
+
+		try {
+			await deleteOccasion(occasionUrl);
+			sessionStorage.removeItem('current_occasion_url');
+			goto(`${base}/occasion`);
+		} catch (e) {
+			error = 'Kon gelegenheid niet verwijderen: ' + (e as Error).message;
+			isLoading = false;
+		}
+	}
+
 	function getShortWebId(webId: string): string {
 		return webId.replace('https://', '').replace('/profile/card#me', '');
 	}
@@ -163,17 +230,44 @@
 {:else if currentOccasion}
 	<!-- Viewing an occasion -->
 	<section class="card occasion-view">
-		<div class="occasion-header">
-			<h2>{currentOccasion.name}</h2>
-			{#if currentOccasion.date}
-				<p class="date">{currentOccasion.date}</p>
-			{/if}
-			{#if currentOccasion.adminWebId}
-				<p class="admin">Georganiseerd door: {getShortWebId(currentOccasion.adminWebId)}</p>
-			{/if}
-		</div>
+		{#if isEditing}
+			<!-- Edit form -->
+			<div class="edit-form">
+				<h3>Gelegenheid Bewerken</h3>
+				<div class="form">
+					<label>
+						Naam
+						<input type="text" bind:value={editName} />
+					</label>
+					<label>
+						Datum (optioneel)
+						<input type="date" bind:value={editDate} />
+					</label>
+					<div class="button-row">
+						<button class="primary" onclick={handleSaveEdit}>Opslaan</button>
+						<button onclick={cancelEditing}>Annuleren</button>
+					</div>
+				</div>
+			</div>
+		{:else}
+			<div class="occasion-header">
+				<h2>{currentOccasion.name}</h2>
+				{#if currentOccasion.date}
+					<p class="date">{currentOccasion.date}</p>
+				{/if}
+				{#if currentOccasion.adminWebId}
+					<p class="admin">Georganiseerd door: {getShortWebId(currentOccasion.adminWebId)}</p>
+				{/if}
+			</div>
+		{/if}
 
-		{#if isAdmin}
+		{#if isAdmin && !isEditing}
+			<!-- Admin actions -->
+			<div class="admin-actions">
+				<button onclick={startEditing}>✏️ Bewerken</button>
+				<button class="danger" onclick={handleDelete}>🗑️ Verwijderen</button>
+			</div>
+
 			<!-- Admin view -->
 			<div class="participants-section">
 				<h3>Ingeschreven Deelnemers ({participants.length})</h3>
@@ -196,7 +290,7 @@
 				<p>Deel deze link met deelnemers:</p>
 				<button onclick={copyShareLink}>Kopieer link</button>
 			</div>
-		{:else if $isLoggedIn}
+		{:else if $isLoggedIn && !isEditing}
 			<!-- Participant view -->
 			{#if isRegistered}
 				<div class="success">
@@ -422,5 +516,42 @@
 		text-decoration: none;
 		border-radius: 6px;
 		font-size: 0.9rem;
+	}
+
+	.admin-actions {
+		display: flex;
+		gap: 10px;
+		margin-bottom: 20px;
+	}
+
+	.admin-actions button {
+		padding: 8px 16px;
+	}
+
+	button.danger {
+		background: #dc3545;
+		color: white;
+	}
+
+	button.danger:hover {
+		background: #c82333;
+	}
+
+	.edit-form {
+		padding: 20px;
+		background: #f8f9fa;
+		border-radius: 12px;
+		margin-bottom: 20px;
+	}
+
+	.edit-form h3 {
+		margin-top: 0;
+		color: #333;
+	}
+
+	.button-row {
+		display: flex;
+		gap: 10px;
+		margin-top: 10px;
 	}
 </style>
