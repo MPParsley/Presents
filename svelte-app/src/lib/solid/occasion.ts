@@ -292,6 +292,9 @@ export async function fetchParticipants(registrationsUrl: string): Promise<Parti
 	}
 
 	const turtle = await response.text();
+	console.log('[fetchParticipants] Container URL:', registrationsUrl);
+	console.log('[fetchParticipants] Container turtle:', turtle);
+
 	const resources: string[] = [];
 
 	// Parse ldp:contains with comma-separated values (like fetchMyOccasions)
@@ -300,16 +303,20 @@ export async function fetchParticipants(registrationsUrl: string): Promise<Parti
 
 	while ((containsMatch = containsRegex.exec(turtle)) !== null) {
 		const containsSection = containsMatch[1];
+		console.log('[fetchParticipants] Contains section:', containsSection);
 		const urlRegex = /<([^>]+)>/g;
 		let urlMatch;
 
 		while ((urlMatch = urlRegex.exec(containsSection)) !== null) {
 			const resourceUrl = urlMatch[1];
+			console.log('[fetchParticipants] Found resource:', resourceUrl);
 			if (resourceUrl.endsWith('.ttl') && !resourceUrl.includes('.placeholder')) {
 				resources.push(resourceUrl.startsWith('http') ? resourceUrl : registrationsUrl + resourceUrl);
 			}
 		}
 	}
+
+	console.log('[fetchParticipants] Resources to fetch:', resources);
 
 	const participants: Participant[] = [];
 	for (const resourceUrl of resources) {
@@ -320,7 +327,9 @@ export async function fetchParticipants(registrationsUrl: string): Promise<Parti
 
 			if (regResponse.ok) {
 				const regTurtle = await regResponse.text();
+				console.log('[fetchParticipants] Registration turtle:', regTurtle);
 				const participant = parseRegistrationTurtle(regTurtle);
+				console.log('[fetchParticipants] Parsed participant:', participant);
 				if (participant.webId) {
 					participants.push(participant);
 				}
@@ -330,5 +339,6 @@ export async function fetchParticipants(registrationsUrl: string): Promise<Parti
 		}
 	}
 
+	console.log('[fetchParticipants] Final participants:', participants);
 	return participants;
 }
