@@ -305,6 +305,9 @@
             if (occasionUrl) {
                 sessionStorage.setItem('current_occasion_url', occasionUrl);
                 console.log('[SYNC] Captured occasion URL:', occasionUrl);
+            } else if (!window.location.search.includes('code=')) {
+                // Clear stored occasion if visiting base page (not OIDC callback)
+                sessionStorage.removeItem('current_occasion_url');
             }
         })();
     </script>
