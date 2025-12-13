@@ -13,18 +13,18 @@
  */
 
 // ===========================================
-// IMPORTS FROM ESM.SH CDN
+// IMPORTS FROM JSDELIVR CDN
 // ===========================================
 
-// Using esm.sh CDN with pinned versions for stability
+// Using jsdelivr CDN with older stable versions
 import {
     login,
     logout,
     handleIncomingRedirect,
     getDefaultSession
-} from "https://esm.sh/@inrupt/solid-client-authn-browser@1.11.7";
+} from "https://cdn.jsdelivr.net/npm/@inrupt/solid-client-authn-browser@1.11.2/dist/index.es.js";
 
-import * as solidClient from "https://esm.sh/@inrupt/solid-client@1.30.2";
+import * as solidClient from "https://cdn.jsdelivr.net/npm/@inrupt/solid-client@1.23.0/dist/index.es.js";
 
 // ===========================================
 // CONSTANTS
