@@ -1,5 +1,5 @@
 /**
- * Gift Name Shuffler - SOLID Integration
+ * Gift Name Shuffler - SOLID Integration (ES Module)
  *
  * This file handles:
  * - SOLID Pod authentication via Inrupt libraries
@@ -11,6 +11,32 @@
  * - schema: http://schema.org/ (ItemList, ListItem, name, description, url, position)
  * - seg: https://segersrosseel.be/ns/gift# (priority - custom extension)
  */
+
+// ===========================================
+// IMPORTS FROM SKYPACK CDN
+// ===========================================
+
+import {
+    login,
+    logout,
+    handleIncomingRedirect,
+    getDefaultSession
+} from "https://cdn.skypack.dev/@inrupt/solid-client-authn-browser";
+
+import {
+    getSolidDataset,
+    getThingAll,
+    getUrlAll,
+    getStringNoLocale,
+    getUrl,
+    getInteger,
+    asUrl,
+    createSolidDataset,
+    buildThing,
+    createThing,
+    setThing,
+    saveSolidDatasetAt
+} from "https://cdn.skypack.dev/@inrupt/solid-client";
 
 // ===========================================
 // CONSTANTS
@@ -42,15 +68,9 @@ const RDF_NS = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
  * Initialize SOLID - check for existing session and handle redirects
  */
 async function initSolid() {
-    // Check if Inrupt libraries are loaded (CDN bundles export as solidClientAuthn and solidClient)
-    if (typeof solidClientAuthn === 'undefined') {
-        console.warn('SOLID libraries not loaded - SOLID features disabled');
-        return;
-    }
-
     try {
         // Handle incoming redirect from Identity Provider
-        await solidClientAuthn.handleIncomingRedirect({
+        await handleIncomingRedirect({
             restorePreviousSession: true
         });
 
@@ -65,10 +85,7 @@ async function initSolid() {
  * Get the current SOLID session
  */
 function getSolidSession() {
-    if (typeof solidClientAuthn === 'undefined') {
-        return null;
-    }
-    return solidClientAuthn.getDefaultSession();
+    return getDefaultSession();
 }
 
 /**
@@ -109,7 +126,7 @@ async function loginToSolid() {
     }
 
     try {
-        await solidClientAuthn.login({
+        await login({
             oidcIssuer: providerUrl,
             redirectUrl: window.location.href,
             clientName: 'Gift Name Shuffler'
@@ -125,7 +142,7 @@ async function loginToSolid() {
  */
 async function logoutFromSolid() {
     try {
-        await solidClientAuthn.logout();
+        await logout();
         updateSolidUI();
     } catch (error) {
         console.error('Logout error:', error);
@@ -204,7 +221,7 @@ function linkCurrentUserToPerson(personId) {
     // Check if this WebID is already linked to another person
     const existingPersonId = Object.keys(profiles).find(pid => profiles[pid].webId === webId);
     if (existingPersonId && existingPersonId !== personId) {
-        const persons = getPersons();
+        const persons = typeof getPersons === 'function' ? getPersons() : [];
         const existingPerson = persons.find(p => p.id === existingPersonId);
         alert(`Dit Solid account is al gekoppeld aan ${existingPerson ? existingPerson.name : 'iemand anders'}.`);
         return;
@@ -217,7 +234,9 @@ function linkCurrentUserToPerson(personId) {
     };
 
     saveSolidProfiles(profiles);
-    renderPersons();
+    if (typeof renderPersons === 'function') {
+        renderPersons();
+    }
     alert('Solid account succesvol gekoppeld!');
 }
 
@@ -232,7 +251,9 @@ function unlinkPersonFromSolid(personId) {
     const profiles = getSolidProfiles();
     delete profiles[personId];
     saveSolidProfiles(profiles);
-    renderPersons();
+    if (typeof renderPersons === 'function') {
+        renderPersons();
+    }
 }
 
 /**
@@ -284,26 +305,26 @@ async function getWishlistFromPod(webId) {
         const fetchFn = session && session.info.isLoggedIn ? session.fetch : fetch;
 
         // Fetch the dataset
-        const dataset = await solidClient.getSolidDataset(wishlistUrl, {
+        const dataset = await getSolidDataset(wishlistUrl, {
             fetch: fetchFn
         });
 
         // Get all things from the dataset
-        const things = solidClient.getThingAll(dataset);
+        const things = getThingAll(dataset);
 
         // Parse wishlist items
         const items = things
             .filter(thing => {
-                const types = solidClient.getUrlAll(thing, RDF_NS + 'type');
+                const types = getUrlAll(thing, RDF_NS + 'type');
                 return types.includes(SCHEMA_NS + 'ListItem');
             })
             .map(thing => ({
-                id: solidClient.asUrl(thing),
-                name: solidClient.getStringNoLocale(thing, SCHEMA_NS + 'name') || '',
-                description: solidClient.getStringNoLocale(thing, SCHEMA_NS + 'description') || '',
-                url: solidClient.getUrl(thing, SCHEMA_NS + 'url') || '',
-                priority: solidClient.getInteger(thing, SEG_NS + 'priority') || 3,
-                position: solidClient.getInteger(thing, SCHEMA_NS + 'position') || 0
+                id: asUrl(thing),
+                name: getStringNoLocale(thing, SCHEMA_NS + 'name') || '',
+                description: getStringNoLocale(thing, SCHEMA_NS + 'description') || '',
+                url: getUrl(thing, SCHEMA_NS + 'url') || '',
+                priority: getInteger(thing, SEG_NS + 'priority') || 3,
+                position: getInteger(thing, SCHEMA_NS + 'position') || 0
             }))
             .sort((a, b) => b.priority - a.priority || a.position - b.position);
 
@@ -344,13 +365,13 @@ async function saveWishlistToPod(items) {
     const session = getSolidSession();
 
     // Create a new dataset
-    let dataset = solidClient.createSolidDataset();
+    let dataset = createSolidDataset();
 
     // Add each item as a Thing
     items.forEach((item, index) => {
         const itemUrl = wishlistUrl + '#item-' + (item.id || generateId());
 
-        let thing = solidClient.buildThing(solidClient.createThing({ url: itemUrl }))
+        let thing = buildThing(createThing({ url: itemUrl }))
             .addUrl(RDF_NS + 'type', SCHEMA_NS + 'ListItem')
             .addStringNoLocale(SCHEMA_NS + 'name', item.name || '')
             .addInteger(SCHEMA_NS + 'position', index + 1)
@@ -364,11 +385,11 @@ async function saveWishlistToPod(items) {
             thing = thing.addUrl(SCHEMA_NS + 'url', item.url);
         }
 
-        dataset = solidClient.setThing(dataset, thing.build());
+        dataset = setThing(dataset, thing.build());
     });
 
     // Save to Pod
-    await solidClient.saveSolidDatasetAt(wishlistUrl, dataset, {
+    await saveSolidDatasetAt(wishlistUrl, dataset, {
         fetch: session.fetch
     });
 
@@ -454,10 +475,24 @@ function closeWishlistModal() {
         modal.style.display = 'none';
     }
     // Clear form
-    document.getElementById('wish-name').value = '';
-    document.getElementById('wish-description').value = '';
-    document.getElementById('wish-url').value = '';
-    document.getElementById('wish-priority').value = '3';
+    const wishName = document.getElementById('wish-name');
+    const wishDesc = document.getElementById('wish-description');
+    const wishUrl = document.getElementById('wish-url');
+    const wishPriority = document.getElementById('wish-priority');
+    if (wishName) wishName.value = '';
+    if (wishDesc) wishDesc.value = '';
+    if (wishUrl) wishUrl.value = '';
+    if (wishPriority) wishPriority.value = '3';
+}
+
+/**
+ * Escape HTML to prevent XSS (local helper)
+ */
+function escapeHtmlLocal(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 /**
@@ -476,9 +511,9 @@ function renderWishlistEditor() {
         <div class="wishlist-item" data-index="${index}">
             <div class="wishlist-item-content">
                 <span class="wishlist-priority">${'⭐'.repeat(item.priority)}</span>
-                <strong>${escapeHtml(item.name)}</strong>
-                ${item.description ? `<p class="wishlist-description">${escapeHtml(item.description)}</p>` : ''}
-                ${item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener">Link</a>` : ''}
+                <strong>${escapeHtmlLocal(item.name)}</strong>
+                ${item.description ? `<p class="wishlist-description">${escapeHtmlLocal(item.description)}</p>` : ''}
+                ${item.url ? `<a href="${escapeHtmlLocal(item.url)}" target="_blank" rel="noopener">Link</a>` : ''}
             </div>
             <div class="wishlist-item-actions">
                 <button class="small-btn" onclick="moveWishlistItem(${index}, -1)">↑</button>
@@ -487,6 +522,13 @@ function renderWishlistEditor() {
             </div>
         </div>
     `).join('');
+}
+
+/**
+ * Generate a unique ID
+ */
+function generateId() {
+    return Math.random().toString(36).substring(2, 15);
 }
 
 /**
@@ -584,7 +626,7 @@ async function moveWishlistItem(index, direction) {
  * Show a person's wishlist in a viewer modal
  */
 async function showPersonWishlist(personId) {
-    const persons = getPersons();
+    const persons = typeof getPersons === 'function' ? getPersons() : [];
     const person = persons.find(p => p.id === personId);
     const webId = getWebIdForPerson(personId);
 
@@ -616,10 +658,10 @@ async function showPersonWishlist(personId) {
             <div class="wishlist-view-item">
                 <div class="wishlist-item-header">
                     <span class="wishlist-priority">${'⭐'.repeat(item.priority)}</span>
-                    <strong>${escapeHtml(item.name)}</strong>
+                    <strong>${escapeHtmlLocal(item.name)}</strong>
                 </div>
-                ${item.description ? `<p class="wishlist-description">${escapeHtml(item.description)}</p>` : ''}
-                ${item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener" class="wishlist-link">Bekijk link →</a>` : ''}
+                ${item.description ? `<p class="wishlist-description">${escapeHtmlLocal(item.description)}</p>` : ''}
+                ${item.url ? `<a href="${escapeHtmlLocal(item.url)}" target="_blank" rel="noopener" class="wishlist-link">Bekijk link →</a>` : ''}
             </div>
         `).join('');
     } catch (error) {
@@ -639,6 +681,27 @@ function closeWishlistViewer() {
 }
 
 // ===========================================
+// EXPOSE FUNCTIONS TO WINDOW (for onclick handlers)
+// ===========================================
+
+window.loginToSolid = loginToSolid;
+window.logoutFromSolid = logoutFromSolid;
+window.showWishlistEditor = showWishlistEditor;
+window.closeWishlistModal = closeWishlistModal;
+window.addWishlistItem = addWishlistItem;
+window.removeWishlistItem = removeWishlistItem;
+window.moveWishlistItem = moveWishlistItem;
+window.showPersonWishlist = showPersonWishlist;
+window.closeWishlistViewer = closeWishlistViewer;
+window.linkCurrentUserToPerson = linkCurrentUserToPerson;
+window.unlinkPersonFromSolid = unlinkPersonFromSolid;
+window.getSolidProfiles = getSolidProfiles;
+window.saveSolidProfiles = saveSolidProfiles;
+window.getWishlistFromPod = getWishlistFromPod;
+window.isSolidLoggedIn = isSolidLoggedIn;
+window.getCurrentWebId = getCurrentWebId;
+
+// ===========================================
 // INITIALIZATION
 // ===========================================
 
@@ -650,9 +713,5 @@ function initSolidFeatures() {
     initSolid();
 }
 
-// Run initialization when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initSolidFeatures);
-} else {
-    initSolidFeatures();
-}
+// Run initialization
+initSolidFeatures();
