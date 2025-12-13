@@ -234,13 +234,15 @@
         let currentAssignment = null;
 
         /**
-         * Parse URL parameters
+         * Parse URL parameters (supports both old hash format and new query format)
          */
         function getUrlParams() {
             const params = new URLSearchParams(window.location.search);
             return {
-                // Encoded assignment data (base64 JSON)
+                // New format: query parameter with full data
                 data: params.get('data'),
+                // Old format: hash with compact data
+                hash: window.location.hash.substring(1),
                 // Or separate params for localStorage lookup
                 edition: params.get('edition'),
                 giver: params.get('giver')
@@ -248,7 +250,7 @@
         }
 
         /**
-         * Decode assignment from URL parameter
+         * Decode assignment from URL parameter (new format)
          */
         function decodeAssignment(encodedData) {
             try {
@@ -256,6 +258,35 @@
                 return JSON.parse(json);
             } catch (e) {
                 console.error('Failed to decode assignment:', e);
+                return null;
+            }
+        }
+
+        /**
+         * Decode assignment from hash (old format)
+         * Old format: {g: "giver", r: "recipient", o: "occasion"}
+         */
+        function decodeOldHashFormat(hash) {
+            try {
+                const json = atob(hash);
+                const data = JSON.parse(json);
+
+                // Convert old format to new format
+                if (data.g && data.r) {
+                    return {
+                        giverName: data.g,
+                        giverId: null,
+                        recipientName: data.r,
+                        recipientId: null,
+                        occasionName: data.o || '',
+                        occasionDate: null,
+                        recipientWebId: null,
+                        recipientWishlistUrl: null
+                    };
+                }
+                return null;
+            } catch (e) {
+                console.error('Failed to decode old hash format:', e);
                 return null;
             }
         }
@@ -338,6 +369,28 @@
         }
 
         /**
+         * Try to find recipient's WebID from localStorage by name
+         */
+        function findRecipientWebIdByName(recipientName) {
+            try {
+                const persons = JSON.parse(localStorage.getItem('giftApp.persons') || '[]');
+                const solidProfiles = JSON.parse(localStorage.getItem('giftApp.solidProfiles') || '{}');
+
+                // Find person by name (case insensitive)
+                const person = persons.find(p =>
+                    p.name.toLowerCase() === recipientName.toLowerCase()
+                );
+
+                if (person && solidProfiles[person.id]) {
+                    return solidProfiles[person.id].webId;
+                }
+            } catch (e) {
+                console.error('Error finding recipient WebID:', e);
+            }
+            return null;
+        }
+
+        /**
          * Load and display recipient's wishlist
          */
         async function loadRecipientWishlist(assignment) {
@@ -345,7 +398,13 @@
             const title = document.getElementById('recipient-wishlist-title');
             const content = document.getElementById('recipient-wishlist-content');
 
-            if (!assignment.recipientWebId) {
+            // Try to get WebID from assignment, or look it up by name
+            let recipientWebId = assignment.recipientWebId;
+            if (!recipientWebId && assignment.recipientName) {
+                recipientWebId = findRecipientWebIdByName(assignment.recipientName);
+            }
+
+            if (!recipientWebId) {
                 section.style.display = 'block';
                 title.textContent = `Wishlist van ${assignment.recipientName}`;
                 content.innerHTML = `
@@ -356,6 +415,9 @@
                 `;
                 return;
             }
+
+            // Update assignment with found WebID for later use
+            assignment.recipientWebId = recipientWebId;
 
             section.style.display = 'block';
             title.textContent = `Wishlist van ${assignment.recipientName}`;
@@ -410,9 +472,13 @@
             const params = getUrlParams();
             let assignment = null;
 
-            // Try to load from encoded data first
+            // Try to load from new encoded data format first (?data=...)
             if (params.data) {
                 assignment = decodeAssignment(params.data);
+            }
+            // Try old hash format (#base64...)
+            else if (params.hash) {
+                assignment = decodeOldHashFormat(params.hash);
             }
             // Fall back to localStorage lookup
             else if (params.edition && params.giver) {
