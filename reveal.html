@@ -261,7 +261,7 @@
 
         /**
          * Decode assignment from hash (old format)
-         * Old format: {g: "giver", r: "recipient", o: "occasion"}
+         * Old format: {g: "giver", r: "recipient", o: "occasion", w: "webId" (optional)}
          */
         function decodeOldHashFormat(hash) {
             try {
@@ -277,14 +277,26 @@
                         recipientId: null,
                         occasionName: data.o || '',
                         occasionDate: null,
-                        recipientWebId: null,
-                        recipientWishlistUrl: null
+                        recipientWebId: data.w || null,
+                        recipientWishlistUrl: data.w ? getPodBaseUrl(data.w) + '/public/giftshuffler-wishlist.ttl' : null
                     };
                 }
                 return null;
             } catch (e) {
                 console.error('Failed to decode old hash format:', e);
                 return null;
+            }
+        }
+
+        /**
+         * Extract Pod base URL from WebID (helper for old format)
+         */
+        function getPodBaseUrl(webId) {
+            try {
+                const url = new URL(webId);
+                return url.origin;
+            } catch {
+                return webId.split('/profile/')[0];
             }
         }
 
