@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gift Name Shuffler</title>
     <link rel="stylesheet" href="styles.css">
+    <!-- SOLID/Inrupt Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@inrupt/solid-client-authn-browser@2/dist/solid-client-authn-browser.bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@inrupt/solid-client@2/dist/solid-client.bundle.js"></script>
 </head>
 <body>
     <header>
@@ -24,6 +27,31 @@
                 <button onclick="addPerson()">Add Person</button>
             </div>
             <ul id="persons-list"></ul>
+        </section>
+
+        <!-- Section: SOLID Account -->
+        <section id="solid-section" class="card">
+            <h2>Mijn Solid Pod</h2>
+            <p class="info-text">Koppel je <a href="https://solidproject.org/users/get-a-pod" target="_blank" rel="noopener">Solid Pod</a> om je wishlist te beheren. Je data blijft van jou!</p>
+
+            <!-- Not logged in -->
+            <div id="solid-login">
+                <div class="form-row">
+                    <select id="solid-provider">
+                        <option value="">-- Kies provider --</option>
+                    </select>
+                    <button onclick="loginToSolid()">Inloggen met Solid</button>
+                </div>
+            </div>
+
+            <!-- Logged in -->
+            <div id="solid-profile" style="display: none;">
+                <p>Ingelogd als: <strong id="solid-webid" title=""></strong></p>
+                <div class="form-row">
+                    <button onclick="showWishlistEditor()" class="primary-btn">Beheer Mijn Wishlist</button>
+                    <button onclick="logoutFromSolid()">Uitloggen</button>
+                </div>
+            </div>
         </section>
 
         <!-- Section 2: Manage Groups -->
@@ -146,7 +174,56 @@
         <p>Gift Name Shuffler &mdash; A simple static web app for organizing gift exchanges.</p>
     </footer>
 
+    <!-- Wishlist Editor Modal -->
+    <div id="wishlist-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Mijn Verlanglijstje</h3>
+                <button class="modal-close" onclick="closeWishlistModal()">&times;</button>
+            </div>
+
+            <div id="wishlist-items">
+                <!-- Items will be rendered here -->
+            </div>
+
+            <div class="wishlist-form">
+                <h4>Nieuw item toevoegen</h4>
+                <div class="form-row">
+                    <input type="text" id="wish-name" placeholder="Naam van het item">
+                </div>
+                <div class="form-row">
+                    <textarea id="wish-description" placeholder="Beschrijving (optioneel)" rows="2"></textarea>
+                </div>
+                <div class="form-row">
+                    <input type="url" id="wish-url" placeholder="Link naar product (optioneel)">
+                    <select id="wish-priority">
+                        <option value="1">⭐</option>
+                        <option value="2">⭐⭐</option>
+                        <option value="3" selected>⭐⭐⭐</option>
+                        <option value="4">⭐⭐⭐⭐</option>
+                        <option value="5">⭐⭐⭐⭐⭐</option>
+                    </select>
+                </div>
+                <button onclick="addWishlistItem()" class="primary-btn">Toevoegen aan Wishlist</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wishlist Viewer Modal (for viewing others' wishlists) -->
+    <div id="wishlist-viewer-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="wishlist-viewer-title">Wishlist</h3>
+                <button class="modal-close" onclick="closeWishlistViewer()">&times;</button>
+            </div>
+            <div id="wishlist-viewer-content">
+                <!-- Wishlist items will be rendered here -->
+            </div>
+        </div>
+    </div>
+
     <script src="main.js"></script>
     <script src="export.js"></script>
+    <script src="solid.js"></script>
 </body>
 </html>
