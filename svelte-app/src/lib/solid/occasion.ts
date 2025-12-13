@@ -293,13 +293,21 @@ export async function fetchParticipants(registrationsUrl: string): Promise<Parti
 
 	const turtle = await response.text();
 	const resources: string[] = [];
-	const resourceRegex = /ldp:contains\s+<([^>]+)>/g;
-	let match;
 
-	while ((match = resourceRegex.exec(turtle)) !== null) {
-		const resourceUrl = match[1];
-		if (resourceUrl.endsWith('.ttl') && !resourceUrl.includes('.placeholder')) {
-			resources.push(resourceUrl.startsWith('http') ? resourceUrl : registrationsUrl + resourceUrl);
+	// Parse ldp:contains with comma-separated values (like fetchMyOccasions)
+	const containsRegex = /ldp:contains\s+([^;.]+)/g;
+	let containsMatch;
+
+	while ((containsMatch = containsRegex.exec(turtle)) !== null) {
+		const containsSection = containsMatch[1];
+		const urlRegex = /<([^>]+)>/g;
+		let urlMatch;
+
+		while ((urlMatch = urlRegex.exec(containsSection)) !== null) {
+			const resourceUrl = urlMatch[1];
+			if (resourceUrl.endsWith('.ttl') && !resourceUrl.includes('.placeholder')) {
+				resources.push(resourceUrl.startsWith('http') ? resourceUrl : registrationsUrl + resourceUrl);
+			}
 		}
 	}
 
