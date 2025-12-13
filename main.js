@@ -17,7 +17,8 @@ const STORAGE_KEYS = {
     OCCASIONS: 'giftApp.occasions',
     EDITIONS: 'giftApp.editions',
     EXCLUSIONS: 'giftApp.exclusions',
-    INCLUSIONS: 'giftApp.inclusions'
+    INCLUSIONS: 'giftApp.inclusions',
+    WISHLISTS: 'giftApp.wishlists'
 };
 
 // ===========================================
@@ -110,7 +111,7 @@ function addPerson() {
  * Delete a person
  */
 function deletePerson(id) {
-    if (!confirm('Are you sure you want to delete this person? They will also be removed from all groups, exclusions, and inclusions.')) {
+    if (!confirm('Are you sure you want to delete this person? They will also be removed from all groups, exclusions, inclusions, and their wishlist will be deleted.')) {
         return;
     }
 
@@ -136,6 +137,11 @@ function deletePerson(id) {
     inclusions = inclusions.filter(i => i.giverId !== id && i.recipientId !== id);
     saveData(STORAGE_KEYS.INCLUSIONS, inclusions);
 
+    // Remove person's wishlist
+    let wishlists = getWishlists();
+    delete wishlists[id];
+    saveWishlists(wishlists);
+
     renderPersons();
     renderGroupsUI();
     renderExclusions();
@@ -151,6 +157,7 @@ function renderPersons() {
     const list = document.getElementById('persons-list');
     const persons = getPersons();
     const groups = getGroups();
+    const wishlists = getWishlists();
 
     if (persons.length === 0) {
         list.innerHTML = '<li><em>No persons added yet.</em></li>';
@@ -171,13 +178,26 @@ function renderPersons() {
     list.innerHTML = sortedPersons.map(p => {
         const group = personGroupMap[p.id];
         const groupName = group ? group.name : 'No group';
+        const wishlistCount = (wishlists[p.id] || []).length;
+        const wishlistBadge = wishlistCount > 0 ? `<span class="wishlist-badge">${wishlistCount}</span>` : '';
+
         return `
-            <li id="person-item-${p.id}">
-                <span class="item-name">${escapeHtml(p.name)} <small class="group-tag">(${escapeHtml(groupName)})</small></span>
-                <span class="item-buttons">
-                    <button class="small-btn" onclick="editPerson('${p.id}')">Edit</button>
-                    <button class="small-btn danger-btn" onclick="deletePerson('${p.id}')">Delete</button>
-                </span>
+            <li id="person-item-${p.id}" class="person-item">
+                <div class="person-header">
+                    <span class="item-name">${escapeHtml(p.name)} <small class="group-tag">(${escapeHtml(groupName)})</small></span>
+                    <span class="item-buttons">
+                        <button class="small-btn" onclick="toggleWishlist('${p.id}')">Wishlist ${wishlistBadge}</button>
+                        <button class="small-btn" onclick="editPerson('${p.id}')">Edit</button>
+                        <button class="small-btn danger-btn" onclick="deletePerson('${p.id}')">Delete</button>
+                    </span>
+                </div>
+                <div id="wishlist-container-${p.id}" class="wishlist-container" style="display: none;">
+                    <div class="wishlist-input-row">
+                        <input type="text" id="wishlist-input-${p.id}" placeholder="Add gift idea..." onkeypress="if(event.key==='Enter')addWishlistItem('${p.id}')">
+                        <button class="small-btn" onclick="addWishlistItem('${p.id}')">Add</button>
+                    </div>
+                    <ul id="wishlist-items-${p.id}" class="wishlist-items"></ul>
+                </div>
             </li>
         `;
     }).join('');
@@ -868,6 +888,106 @@ function updateInclusionDropdowns() {
 }
 
 // ===========================================
+// WISHLISTS MANAGEMENT
+// ===========================================
+
+/**
+ * Get all wishlists
+ * Returns an object: { personId: ['item1', 'item2', ...], ... }
+ */
+function getWishlists() {
+    const data = localStorage.getItem(STORAGE_KEYS.WISHLISTS);
+    return data ? JSON.parse(data) : {};
+}
+
+/**
+ * Get wishlist for a specific person
+ */
+function getWishlistForPerson(personId) {
+    const wishlists = getWishlists();
+    return wishlists[personId] || [];
+}
+
+/**
+ * Save all wishlists
+ */
+function saveWishlists(wishlists) {
+    localStorage.setItem(STORAGE_KEYS.WISHLISTS, JSON.stringify(wishlists));
+}
+
+/**
+ * Add item to a person's wishlist
+ */
+function addWishlistItem(personId) {
+    const input = document.getElementById(`wishlist-input-${personId}`);
+    const item = input.value.trim();
+
+    if (!item) {
+        alert('Please enter a wishlist item.');
+        return;
+    }
+
+    const wishlists = getWishlists();
+    if (!wishlists[personId]) {
+        wishlists[personId] = [];
+    }
+
+    wishlists[personId].push(item);
+    saveWishlists(wishlists);
+
+    input.value = '';
+    renderWishlist(personId);
+}
+
+/**
+ * Remove item from a person's wishlist
+ */
+function removeWishlistItem(personId, index) {
+    const wishlists = getWishlists();
+    if (wishlists[personId]) {
+        wishlists[personId].splice(index, 1);
+        saveWishlists(wishlists);
+        renderWishlist(personId);
+    }
+}
+
+/**
+ * Render wishlist for a specific person
+ */
+function renderWishlist(personId) {
+    const list = document.getElementById(`wishlist-items-${personId}`);
+    if (!list) return;
+
+    const items = getWishlistForPerson(personId);
+
+    if (items.length === 0) {
+        list.innerHTML = '<li><em>No wishlist items yet.</em></li>';
+        return;
+    }
+
+    list.innerHTML = items.map((item, index) => `
+        <li>
+            <span class="wishlist-item-text">${escapeHtml(item)}</span>
+            <button class="small-btn danger-btn" onclick="removeWishlistItem('${personId}', ${index})">Delete</button>
+        </li>
+    `).join('');
+}
+
+/**
+ * Toggle wishlist visibility for a person
+ */
+function toggleWishlist(personId) {
+    const container = document.getElementById(`wishlist-container-${personId}`);
+    if (container) {
+        const isHidden = container.style.display === 'none';
+        container.style.display = isHidden ? 'block' : 'none';
+        if (isHidden) {
+            renderWishlist(personId);
+        }
+    }
+}
+
+// ===========================================
 // EDITIONS MANAGEMENT
 // ===========================================
 
@@ -1031,13 +1151,14 @@ function deleteEdition(id) {
 /**
  * Generate a share link for an assignment
  */
-function generateShareLink(giverName, recipientName, occasionName) {
+function generateShareLink(giverName, recipientName, occasionName, wishlist = []) {
     const data = {
         g: giverName,
         r: recipientName,
-        o: occasionName
+        o: occasionName,
+        w: wishlist
     };
-    const encoded = btoa(JSON.stringify(data));
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
     const baseUrl = window.location.href.replace(/\/[^\/]*$/, '/');
     return baseUrl + 'reveal.html#' + encoded;
 }
@@ -1056,6 +1177,7 @@ function showShareLinks(editionId) {
 
     const persons = getPersons();
     const groups = getGroups();
+    const wishlists = getWishlists();
 
     // Build a map: personId -> groupName
     const personToGroup = {};
@@ -1072,7 +1194,8 @@ function showShareLinks(editionId) {
         const giverName = giver ? giver.name : '[Unknown]';
         const recipientName = recipient ? recipient.name : '[Unknown]';
         const groupName = personToGroup[a.giverId] || 'No group';
-        const link = generateShareLink(giverName, recipientName, occasionName);
+        const recipientWishlist = wishlists[a.recipientId] || [];
+        const link = generateShareLink(giverName, recipientName, occasionName, recipientWishlist);
         return { giverName, groupName, link };
     });
 
@@ -1570,7 +1693,8 @@ function exportDataJSON() {
             occasions: getOccasions(),
             editions: getEditions(),
             exclusions: getExclusions(),
-            inclusions: getInclusions()
+            inclusions: getInclusions(),
+            wishlists: getWishlists()
         };
 
         const json = JSON.stringify(data, null, 2);
@@ -1633,6 +1757,7 @@ function importDataJSON(event) {
                 saveData(STORAGE_KEYS.EDITIONS, data.editions);
                 saveData(STORAGE_KEYS.EXCLUSIONS, data.exclusions || []);
                 saveData(STORAGE_KEYS.INCLUSIONS, data.inclusions || []);
+                saveData(STORAGE_KEYS.WISHLISTS, data.wishlists || {});
             } else {
                 // Merge data (add new items, skip duplicates by ID)
                 const existingPersons = getPersons();
@@ -1685,12 +1810,29 @@ function importDataJSON(event) {
                     });
                 }
 
+                // Merge wishlists (add new items to existing wishlists)
+                const existingWishlists = getWishlists();
+                if (data.wishlists) {
+                    Object.keys(data.wishlists).forEach(personId => {
+                        if (!existingWishlists[personId]) {
+                            existingWishlists[personId] = [];
+                        }
+                        // Add items that don't already exist
+                        data.wishlists[personId].forEach(item => {
+                            if (!existingWishlists[personId].includes(item)) {
+                                existingWishlists[personId].push(item);
+                            }
+                        });
+                    });
+                }
+
                 saveData(STORAGE_KEYS.PERSONS, existingPersons);
                 saveData(STORAGE_KEYS.GROUPS, existingGroups);
                 saveData(STORAGE_KEYS.OCCASIONS, existingOccasions);
                 saveData(STORAGE_KEYS.EDITIONS, existingEditions);
                 saveData(STORAGE_KEYS.EXCLUSIONS, existingExclusions);
                 saveData(STORAGE_KEYS.INCLUSIONS, existingInclusions);
+                saveData(STORAGE_KEYS.WISHLISTS, existingWishlists);
             }
 
             // Refresh UI
@@ -1725,7 +1867,7 @@ function importDataJSON(event) {
  * Reset all data with confirmation
  */
 function resetAllData() {
-    if (!confirm('Are you sure you want to delete ALL data?\n\nThis will remove all persons, groups, occasions, editions, exclusions, and inclusions.\n\nThis action cannot be undone!')) {
+    if (!confirm('Are you sure you want to delete ALL data?\n\nThis will remove all persons, groups, occasions, editions, exclusions, inclusions, and wishlists.\n\nThis action cannot be undone!')) {
         return;
     }
 
@@ -1740,6 +1882,7 @@ function resetAllData() {
     localStorage.removeItem(STORAGE_KEYS.EDITIONS);
     localStorage.removeItem(STORAGE_KEYS.EXCLUSIONS);
     localStorage.removeItem(STORAGE_KEYS.INCLUSIONS);
+    localStorage.removeItem(STORAGE_KEYS.WISHLISTS);
 
     // Re-render everything
     renderPersons();

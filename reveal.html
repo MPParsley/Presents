@@ -62,6 +62,36 @@
             font-size: 1.8rem;
             font-weight: bold;
         }
+        .wishlist-section {
+            margin-top: 20px;
+            text-align: left;
+        }
+        .wishlist-section h3 {
+            font-size: 1rem;
+            color: #667eea;
+            margin: 0 0 10px;
+            text-align: center;
+        }
+        .wishlist-items {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .wishlist-items li {
+            background: #f0f4ff;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border-left: 3px solid #667eea;
+        }
+        .wishlist-items li:last-child {
+            margin-bottom: 0;
+        }
+        .no-wishlist {
+            color: #888;
+            font-style: italic;
+            text-align: center;
+        }
         .footer-note {
             font-size: 0.85rem;
             color: #888;
@@ -92,6 +122,10 @@
                 <div class="label">You are giving a gift to:</div>
                 <div class="recipient-name" id="recipient-name"></div>
             </div>
+            <div class="wishlist-section" id="wishlist-section" style="display: none;">
+                <h3>Their Wishlist</h3>
+                <ul class="wishlist-items" id="wishlist-items"></ul>
+            </div>
             <div class="footer-note">
                 Keep this a secret! Don't share this link with others.
             </div>
@@ -107,8 +141,8 @@
                     throw new Error('No data');
                 }
 
-                // Decode the base64 data
-                const jsonStr = atob(hash);
+                // Decode the base64 data (handle UTF-8)
+                const jsonStr = decodeURIComponent(escape(atob(hash)));
                 const data = JSON.parse(jsonStr);
 
                 // Validate required fields
@@ -122,6 +156,18 @@
 
                 if (data.o) {
                     document.getElementById('occasion-name').textContent = data.o;
+                }
+
+                // Display wishlist if present
+                if (data.w && data.w.length > 0) {
+                    const wishlistSection = document.getElementById('wishlist-section');
+                    const wishlistItems = document.getElementById('wishlist-items');
+
+                    wishlistItems.innerHTML = data.w.map(item =>
+                        `<li>${item.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</li>`
+                    ).join('');
+
+                    wishlistSection.style.display = 'block';
                 }
 
                 document.getElementById('assignment').style.display = 'block';
