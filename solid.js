@@ -16,7 +16,7 @@
 // IMPORTS FROM SKYPACK CDN
 // ===========================================
 
-// Using Skypack CDN (same as working hello world example)
+// Using Skypack CDN - authn-browser works without version, solid-client needs older version
 import {
     login,
     logout,
@@ -24,7 +24,8 @@ import {
     getDefaultSession
 } from "https://cdn.skypack.dev/@inrupt/solid-client-authn-browser";
 
-import * as solidClient from "https://cdn.skypack.dev/@inrupt/solid-client";
+// Pin solid-client to v1.30.0 (v3.0.0 fails to build on Skypack)
+import * as solidClient from "https://cdn.skypack.dev/@inrupt/solid-client@1.30.0";
 
 // ===========================================
 // CONSTANTS
