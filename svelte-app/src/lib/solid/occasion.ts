@@ -7,7 +7,7 @@ import {
 	type Occasion,
 	type Participant
 } from './turtle';
-import { GIFTSHUFFLER_PATH } from './constants';
+import { OCCASIONS_PATH } from './constants';
 
 export interface OccasionData {
 	id: string;
@@ -28,7 +28,7 @@ export async function createOccasion(
 	}
 
 	const podBase = getPodBaseUrl(session.info.webId);
-	const occasionPath = `${GIFTSHUFFLER_PATH}/occasions/${data.id}`;
+	const occasionPath = `${OCCASIONS_PATH}/${data.id}`;
 	const occasionUrl = `${podBase}${occasionPath}/occasion.ttl`;
 	const registrationsUrl = `${podBase}${occasionPath}/registrations/`;
 
@@ -193,7 +193,7 @@ export async function fetchMyOccasions(
 	const fetchFn = session.info.isLoggedIn ? session.fetch.bind(session) : fetch;
 
 	const podBase = getPodBaseUrl(webId);
-	const occasionsContainerUrl = `${podBase}${GIFTSHUFFLER_PATH}/occasions/`;
+	const occasionsContainerUrl = `${podBase}${OCCASIONS_PATH}/`;
 
 	const response = await fetchFn(occasionsContainerUrl, {
 		headers: { Accept: 'text/turtle' }

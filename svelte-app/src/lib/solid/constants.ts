@@ -7,8 +7,9 @@ export const SOLID_PROVIDERS = [
 ];
 
 // Paths
-export const WISHLIST_PATH = '/public/giftshuffler-wishlist.ttl';
-export const GIFTSHUFFLER_PATH = '/public/giftshuffler';
+export const PRESENTS_PATH = '/public/presents';
+export const WISHLIST_PATH = `${PRESENTS_PATH}/wishlist.ttl`;
+export const OCCASIONS_PATH = `${PRESENTS_PATH}/occasions`;
 
 // Storage keys
 export const SOLID_STORAGE_KEY = 'giftApp.solidProfiles';
