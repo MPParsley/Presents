@@ -86,9 +86,23 @@ Om je wishlist zichtbaar te maken voor anderen:
 
 Na koppeling verschijnt een groene **"Solid"** badge bij je naam.
 
-### Stap 5: Wishlists bekijken
+### Stap 5: Reveal Links Delen
 
-Bij de **Assignments** (na een shuffle):
+Na een shuffle kan de organisator **persoonlijke reveal links** delen:
+
+1. Ga naar **Shuffle & Assignments**
+2. Selecteer de occasion en edition
+3. Klik op **"Link"** naast elke toewijzing
+4. De link wordt gekopieerd - stuur deze naar de deelnemer
+
+De deelnemer opent `reveal.html?data=...` en ziet:
+- Wie ze een cadeau moeten geven
+- De wishlist van die persoon (indien beschikbaar)
+- De mogelijkheid om hun eigen wishlist te beheren
+
+### Stap 6: Wishlists bekijken
+
+Bij de **Assignments** (in de hoofdapp of op de reveal pagina):
 
 - Elke ontvanger met een gekoppelde Solid Pod toont een **"Wishlist"** knop
 - Klik om de wishlist van je ontvanger te bekijken

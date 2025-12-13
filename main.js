@@ -981,6 +981,8 @@ function showAssignments() {
 
     // Get Solid profiles for wishlist buttons
     const solidProfiles = typeof getSolidProfiles === 'function' ? getSolidProfiles() : {};
+    const occasions = getOccasions();
+    const occasion = occasions.find(o => o.id === edition.occasionId);
 
     list.innerHTML = edition.assignments.map(a => {
         const giver = persons.find(p => p.id === a.giverId);
@@ -996,12 +998,26 @@ function showAssignments() {
             ? `<button class="small-btn wishlist-btn" onclick="showPersonWishlist('${a.recipientId}')">Wishlist</button>`
             : '';
 
+        // Create reveal link data
+        const revealData = {
+            giverName: giverName,
+            giverId: a.giverId,
+            recipientName: recipientName,
+            recipientId: a.recipientId,
+            occasionName: occasion ? occasion.name : '',
+            occasionDate: occasion ? occasion.date : null,
+            recipientWebId: solidProfiles[a.recipientId]?.webId || null,
+            recipientWishlistUrl: solidProfiles[a.recipientId]?.wishlistUrl || null
+        };
+        const encodedData = btoa(JSON.stringify(revealData));
+
         return `
             <li>
                 <span>${escapeHtml(giverName)} <small class="group-tag">(${escapeHtml(giverGroup)})</small></span>
                 <span class="arrow">→</span>
                 <span>${escapeHtml(recipientName)} <small class="group-tag">(${escapeHtml(recipientGroup)})</small></span>
                 ${wishlistBtn}
+                <button class="small-btn" onclick="copyRevealLink('${encodedData}')" title="Kopieer reveal link voor ${escapeHtml(giverName)}">Link</button>
             </li>
         `;
     }).join('');
@@ -1560,6 +1576,27 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+/**
+ * Copy reveal link to clipboard
+ */
+function copyRevealLink(encodedData) {
+    const baseUrl = window.location.href.replace(/\/[^\/]*$/, '/');
+    const revealUrl = baseUrl + 'reveal.html?data=' + encodedData;
+
+    navigator.clipboard.writeText(revealUrl).then(() => {
+        alert('Link gekopieerd naar klembord!\n\nDeel deze link met de deelnemer.');
+    }).catch(err => {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = revealUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('Link gekopieerd naar klembord!\n\nDeel deze link met de deelnemer.');
+    });
 }
 
 // ===========================================

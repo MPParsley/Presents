@@ -571,6 +571,18 @@ footer {
     color: white;
 }
 
+/* Link copy button in assignments */
+#assignments-list .small-btn:last-child {
+    background: #f5f5f5;
+    color: #666;
+    border: 1px solid #ddd;
+}
+
+#assignments-list .small-btn:last-child:hover {
+    background: #e0e0e0;
+    color: #333;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
     .form-row {

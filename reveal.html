@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jouw Secret Santa Toewijzing</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- SOLID/Inrupt Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@inrupt/solid-client-authn-browser@2/dist/solid-client-authn-browser.bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@inrupt/solid-client@2/dist/solid-client.bundle.js"></script>
+    <style>
+        /* Reveal page specific styles */
+        .reveal-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 16px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .reveal-card h2 {
+            border: none;
+            color: white;
+            margin-bottom: 10px;
+        }
+
+        .reveal-card .giver-name {
+            font-size: 1.5rem;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+
+        .reveal-card .assignment-box {
+            background: rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 20px 0;
+        }
+
+        .reveal-card .label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+
+        .reveal-card .recipient-name {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+
+        .reveal-card .occasion-name {
+            margin-top: 20px;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .section-title h3 {
+            margin: 0;
+        }
+
+        .wishlist-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .wishlist-card h3 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .wishlist-empty {
+            color: #666;
+            font-style: italic;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .error-message {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c00;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        /* Override for reveal page */
+        .reveal-page header {
+            background: transparent;
+            color: #333;
+        }
+
+        .reveal-page header h1 {
+            color: #667eea;
+        }
+    </style>
+</head>
+<body class="reveal-page">
+    <header>
+        <h1>Gift Name Shuffler</h1>
+        <p>Jouw persoonlijke toewijzing</p>
+    </header>
+
+    <main>
+        <a href="index.html" class="back-link">&larr; Terug naar overzicht</a>
+
+        <!-- Assignment reveal -->
+        <div id="reveal-content">
+            <div class="loading">Toewijzing laden...</div>
+        </div>
+
+        <!-- Recipient's wishlist -->
+        <div id="recipient-wishlist-section" class="card" style="display: none;">
+            <div class="section-title">
+                <h3 id="recipient-wishlist-title">Wishlist</h3>
+            </div>
+            <div id="recipient-wishlist-content">
+                <div class="loading">Wishlist laden...</div>
+            </div>
+        </div>
+
+        <!-- Solid login & own wishlist management -->
+        <section id="solid-section" class="card">
+            <h2>Mijn Wishlist</h2>
+            <p class="info-text">Beheer je eigen wishlist via je <a href="https://solidproject.org/users/get-a-pod" target="_blank" rel="noopener">Solid Pod</a>. Je data blijft van jou!</p>
+
+            <!-- Not logged in -->
+            <div id="solid-login">
+                <div class="form-row">
+                    <select id="solid-provider">
+                        <option value="">-- Kies provider --</option>
+                    </select>
+                    <button onclick="loginToSolid()">Inloggen met Solid</button>
+                </div>
+            </div>
+
+            <!-- Logged in -->
+            <div id="solid-profile" style="display: none;">
+                <p>Ingelogd als: <strong id="solid-webid" title=""></strong></p>
+                <div class="form-row">
+                    <button onclick="showWishlistEditor()" class="primary-btn">Beheer Mijn Wishlist</button>
+                    <button onclick="logoutFromSolid()">Uitloggen</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Gift Name Shuffler &mdash; Een eenvoudige app voor cadeautjes uitwisseling.</p>
+    </footer>
+
+    <!-- Wishlist Editor Modal -->
+    <div id="wishlist-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Mijn Verlanglijstje</h3>
+                <button class="modal-close" onclick="closeWishlistModal()">&times;</button>
+            </div>
+
+            <div id="wishlist-items">
+                <!-- Items will be rendered here -->
+            </div>
+
+            <div class="wishlist-form">
+                <h4>Nieuw item toevoegen</h4>
+                <div class="form-row">
+                    <input type="text" id="wish-name" placeholder="Naam van het item">
+                </div>
+                <div class="form-row">
+                    <textarea id="wish-description" placeholder="Beschrijving (optioneel)" rows="2"></textarea>
+                </div>
+                <div class="form-row">
+                    <input type="url" id="wish-url" placeholder="Link naar product (optioneel)">
+                    <select id="wish-priority">
+                        <option value="1">&#11088;</option>
+                        <option value="2">&#11088;&#11088;</option>
+                        <option value="3" selected>&#11088;&#11088;&#11088;</option>
+                        <option value="4">&#11088;&#11088;&#11088;&#11088;</option>
+                        <option value="5">&#11088;&#11088;&#11088;&#11088;&#11088;</option>
+                    </select>
+                </div>
+                <button onclick="addWishlistItem()" class="primary-btn">Toevoegen aan Wishlist</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wishlist Viewer Modal (for viewing others' wishlists) -->
+    <div id="wishlist-viewer-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="wishlist-viewer-title">Wishlist</h3>
+                <button class="modal-close" onclick="closeWishlistViewer()">&times;</button>
+            </div>
+            <div id="wishlist-viewer-content">
+                <!-- Wishlist items will be rendered here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="solid.js"></script>
+    <script>
+        // ===========================================
+        // REVEAL PAGE LOGIC
+        // ===========================================
+
+        // Current assignment data (from URL or localStorage)
+        let currentAssignment = null;
+
+        /**
+         * Parse URL parameters
+         */
+        function getUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                // Encoded assignment data (base64 JSON)
+                data: params.get('data'),
+                // Or separate params for localStorage lookup
+                edition: params.get('edition'),
+                giver: params.get('giver')
+            };
+        }
+
+        /**
+         * Decode assignment from URL parameter
+         */
+        function decodeAssignment(encodedData) {
+            try {
+                const json = atob(encodedData);
+                return JSON.parse(json);
+            } catch (e) {
+                console.error('Failed to decode assignment:', e);
+                return null;
+            }
+        }
+
+        /**
+         * Encode assignment for URL sharing
+         */
+        function encodeAssignment(assignment) {
+            return btoa(JSON.stringify(assignment));
+        }
+
+        /**
+         * Load assignment from localStorage
+         */
+        function loadFromLocalStorage(editionId, giverId) {
+            const editions = JSON.parse(localStorage.getItem('giftApp.editions') || '[]');
+            const persons = JSON.parse(localStorage.getItem('giftApp.persons') || '[]');
+            const occasions = JSON.parse(localStorage.getItem('giftApp.occasions') || '[]');
+            const solidProfiles = JSON.parse(localStorage.getItem('giftApp.solidProfiles') || '{}');
+
+            const edition = editions.find(e => e.id === editionId);
+            if (!edition) return null;
+
+            const assignment = edition.assignments.find(a => a.giverId === giverId);
+            if (!assignment) return null;
+
+            const giver = persons.find(p => p.id === assignment.giverId);
+            const recipient = persons.find(p => p.id === assignment.recipientId);
+            const occasion = occasions.find(o => o.id === edition.occasionId);
+
+            return {
+                giverName: giver ? giver.name : 'Onbekend',
+                giverId: assignment.giverId,
+                recipientName: recipient ? recipient.name : 'Onbekend',
+                recipientId: assignment.recipientId,
+                occasionName: occasion ? occasion.name : 'Onbekend',
+                occasionDate: occasion ? occasion.date : null,
+                recipientWebId: solidProfiles[assignment.recipientId]?.webId || null,
+                recipientWishlistUrl: solidProfiles[assignment.recipientId]?.wishlistUrl || null
+            };
+        }
+
+        /**
+         * Render the assignment reveal
+         */
+        function renderAssignment(assignment) {
+            const container = document.getElementById('reveal-content');
+
+            if (!assignment) {
+                container.innerHTML = `
+                    <div class="error-message">
+                        <h3>Toewijzing niet gevonden</h3>
+                        <p>De link is ongeldig of verlopen. Vraag de organisator om een nieuwe link.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            currentAssignment = assignment;
+
+            container.innerHTML = `
+                <div class="reveal-card">
+                    <h2>Hallo ${escapeHtml(assignment.giverName)}!</h2>
+                    <p class="giver-name">Jij geeft een cadeau aan:</p>
+
+                    <div class="assignment-box">
+                        <div class="label">Jouw ontvanger is</div>
+                        <div class="recipient-name">${escapeHtml(assignment.recipientName)}</div>
+                    </div>
+
+                    <div class="occasion-name">
+                        ${escapeHtml(assignment.occasionName)}
+                        ${assignment.occasionDate ? ` - ${escapeHtml(assignment.occasionDate)}` : ''}
+                    </div>
+                </div>
+            `;
+
+            // Load recipient's wishlist if available
+            loadRecipientWishlist(assignment);
+        }
+
+        /**
+         * Load and display recipient's wishlist
+         */
+        async function loadRecipientWishlist(assignment) {
+            const section = document.getElementById('recipient-wishlist-section');
+            const title = document.getElementById('recipient-wishlist-title');
+            const content = document.getElementById('recipient-wishlist-content');
+
+            if (!assignment.recipientWebId) {
+                section.style.display = 'block';
+                title.textContent = `Wishlist van ${assignment.recipientName}`;
+                content.innerHTML = `
+                    <div class="wishlist-empty">
+                        ${escapeHtml(assignment.recipientName)} heeft nog geen Solid Pod gekoppeld.<br>
+                        Er is geen wishlist beschikbaar.
+                    </div>
+                `;
+                return;
+            }
+
+            section.style.display = 'block';
+            title.textContent = `Wishlist van ${assignment.recipientName}`;
+            content.innerHTML = '<div class="loading">Wishlist laden uit Solid Pod...</div>';
+
+            try {
+                const items = await getWishlistFromPod(assignment.recipientWebId);
+
+                if (items.length === 0) {
+                    content.innerHTML = `
+                        <div class="wishlist-empty">
+                            ${escapeHtml(assignment.recipientName)} heeft nog geen items op de wishlist gezet.
+                        </div>
+                    `;
+                    return;
+                }
+
+                content.innerHTML = items.map(item => `
+                    <div class="wishlist-view-item">
+                        <div class="wishlist-item-header">
+                            <span class="wishlist-priority">${'&#11088;'.repeat(item.priority)}</span>
+                            <strong>${escapeHtml(item.name)}</strong>
+                        </div>
+                        ${item.description ? `<p class="wishlist-description">${escapeHtml(item.description)}</p>` : ''}
+                        ${item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener" class="wishlist-link">Bekijk link &rarr;</a>` : ''}
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading wishlist:', error);
+                content.innerHTML = `
+                    <div class="wishlist-empty">
+                        Kon de wishlist niet laden. Probeer het later opnieuw.
+                    </div>
+                `;
+            }
+        }
+
+        /**
+         * Escape HTML to prevent XSS
+         */
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        /**
+         * Initialize the reveal page
+         */
+        function initRevealPage() {
+            const params = getUrlParams();
+            let assignment = null;
+
+            // Try to load from encoded data first
+            if (params.data) {
+                assignment = decodeAssignment(params.data);
+            }
+            // Fall back to localStorage lookup
+            else if (params.edition && params.giver) {
+                assignment = loadFromLocalStorage(params.edition, params.giver);
+            }
+
+            renderAssignment(assignment);
+        }
+
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', initRevealPage);
+    </script>
+</body>
+</html>
