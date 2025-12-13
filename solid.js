@@ -16,16 +16,14 @@
 // IMPORTS FROM SKYPACK CDN
 // ===========================================
 
-// Using Skypack CDN - authn-browser works without version, solid-client needs older version
+// Only import authn-browser (works on Skypack)
+// We'll handle Turtle files manually with fetch() instead of solid-client
 import {
     login,
     logout,
     handleIncomingRedirect,
     getDefaultSession
 } from "https://cdn.skypack.dev/@inrupt/solid-client-authn-browser";
-
-// Pin solid-client to v1.30.0 (v3.0.0 fails to build on Skypack)
-import * as solidClient from "https://cdn.skypack.dev/@inrupt/solid-client@1.30.0";
 
 // ===========================================
 // CONSTANTS
@@ -276,8 +274,101 @@ function getPodBaseUrl(webId) {
 }
 
 // ===========================================
-// WISHLIST CRUD OPERATIONS
+// WISHLIST CRUD OPERATIONS (using fetch + manual Turtle)
 // ===========================================
+
+/**
+ * Parse simple Turtle format to extract wishlist items
+ * This is a simple parser for our specific Turtle format
+ */
+function parseTurtleWishlist(turtle, baseUrl) {
+    const items = [];
+
+    // Match each item block: <#item-xxx> ... .
+    const itemRegex = /<#(item-[^>]+)>\s+a\s+schema:ListItem\s*;([^.]+)\./g;
+    let match;
+
+    while ((match = itemRegex.exec(turtle)) !== null) {
+        const itemId = match[1];
+        const properties = match[2];
+
+        const item = {
+            id: itemId,
+            name: '',
+            description: '',
+            url: '',
+            priority: 3,
+            position: 0
+        };
+
+        // Extract schema:name
+        const nameMatch = properties.match(/schema:name\s+"([^"]*)"(?:@[a-z]+)?/);
+        if (nameMatch) item.name = nameMatch[1];
+
+        // Extract schema:description
+        const descMatch = properties.match(/schema:description\s+"([^"]*)"(?:@[a-z]+)?/);
+        if (descMatch) item.description = descMatch[1];
+
+        // Extract schema:url
+        const urlMatch = properties.match(/schema:url\s+<([^>]+)>/);
+        if (urlMatch) item.url = urlMatch[1];
+
+        // Extract seg:priority
+        const prioMatch = properties.match(/seg:priority\s+(\d+)/);
+        if (prioMatch) item.priority = parseInt(prioMatch[1]);
+
+        // Extract schema:position
+        const posMatch = properties.match(/schema:position\s+(\d+)/);
+        if (posMatch) item.position = parseInt(posMatch[1]);
+
+        items.push(item);
+    }
+
+    return items.sort((a, b) => b.priority - a.priority || a.position - b.position);
+}
+
+/**
+ * Generate Turtle format for wishlist items
+ */
+function generateTurtleWishlist(items, baseUrl) {
+    let turtle = `@prefix schema: <http://schema.org/> .
+@prefix seg: <https://segersrosseel.be/ns/gift#> .
+
+`;
+
+    items.forEach((item, index) => {
+        const itemId = item.id || generateId();
+        turtle += `<#${itemId}> a schema:ListItem ;\n`;
+        turtle += `    schema:name "${escapeTurtleString(item.name || '')}" ;\n`;
+        turtle += `    schema:position ${index + 1} ;\n`;
+        turtle += `    seg:priority ${item.priority || 3}`;
+
+        if (item.description) {
+            turtle += ` ;\n    schema:description "${escapeTurtleString(item.description)}"`;
+        }
+
+        if (item.url) {
+            turtle += ` ;\n    schema:url <${item.url}>`;
+        }
+
+        turtle += ' .\n\n';
+    });
+
+    return turtle;
+}
+
+/**
+ * Escape string for Turtle format
+ */
+function escapeTurtleString(str) {
+    if (!str) return '';
+    return str
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
+        .replace(/\t/g, '\\t');
+}
 
 /**
  * Get wishlist from a Solid Pod
@@ -291,31 +382,21 @@ async function getWishlistFromPod(webId) {
 
     try {
         const session = getSolidSession();
-        const fetchFn = session && session.info.isLoggedIn ? session.fetch : fetch;
+        const fetchFn = session && session.info.isLoggedIn ? session.fetch.bind(session) : fetch;
 
-        // Fetch the dataset
-        const dataset = await solidClient.getSolidDataset(wishlistUrl, {
-            fetch: fetchFn
+        const response = await fetchFn(wishlistUrl, {
+            headers: { 'Accept': 'text/turtle' }
         });
 
-        // Get all things from the dataset
-        const things = solidClient.getThingAll(dataset);
+        if (!response.ok) {
+            if (response.status === 404) {
+                return []; // No wishlist yet
+            }
+            throw new Error(`HTTP ${response.status}`);
+        }
 
-        // Parse wishlist items
-        const items = things
-            .filter(thing => {
-                const types = solidClient.getUrlAll(thing, RDF_NS + 'type');
-                return types.includes(SCHEMA_NS + 'ListItem');
-            })
-            .map(thing => ({
-                id: thing.url || generateId(),
-                name: solidClient.getStringNoLocale(thing, SCHEMA_NS + 'name') || '',
-                description: solidClient.getStringNoLocale(thing, SCHEMA_NS + 'description') || '',
-                url: solidClient.getUrl(thing, SCHEMA_NS + 'url') || '',
-                priority: solidClient.getInteger(thing, SEG_NS + 'priority') || 3,
-                position: solidClient.getInteger(thing, SCHEMA_NS + 'position') || 0
-            }))
-            .sort((a, b) => b.priority - a.priority || a.position - b.position);
+        const turtle = await response.text();
+        const items = parseTurtleWishlist(turtle, wishlistUrl);
 
         // Cache the result
         cacheWishlist(webId, items);
@@ -331,12 +412,7 @@ async function getWishlistFromPod(webId) {
             return cached;
         }
 
-        // 404 means no wishlist yet - not an error
-        if (error.statusCode === 404) {
-            return [];
-        }
-
-        throw error;
+        return [];
     }
 }
 
@@ -353,34 +429,19 @@ async function saveWishlistToPod(items) {
     const wishlistUrl = getPodBaseUrl(webId) + WISHLIST_PATH;
     const session = getSolidSession();
 
-    // Create a new dataset
-    let dataset = solidClient.createSolidDataset();
+    const turtle = generateTurtleWishlist(items, wishlistUrl);
 
-    // Add each item as a Thing
-    items.forEach((item, index) => {
-        const itemUrl = wishlistUrl + '#item-' + (item.id || generateId());
-
-        let thing = solidClient.buildThing(solidClient.createThing({ url: itemUrl }))
-            .addUrl(RDF_NS + 'type', SCHEMA_NS + 'ListItem')
-            .addStringNoLocale(SCHEMA_NS + 'name', item.name || '')
-            .addInteger(SCHEMA_NS + 'position', index + 1)
-            .addInteger(SEG_NS + 'priority', item.priority || 3);
-
-        if (item.description) {
-            thing = thing.addStringNoLocale(SCHEMA_NS + 'description', item.description);
-        }
-
-        if (item.url) {
-            thing = thing.addUrl(SCHEMA_NS + 'url', item.url);
-        }
-
-        dataset = solidClient.setThing(dataset, thing.build());
+    const response = await session.fetch(wishlistUrl, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'text/turtle'
+        },
+        body: turtle
     });
 
-    // Save to Pod
-    await solidClient.saveSolidDatasetAt(wishlistUrl, dataset, {
-        fetch: session.fetch
-    });
+    if (!response.ok) {
+        throw new Error(`Failed to save wishlist: HTTP ${response.status}`);
+    }
 
     // Update cache
     cacheWishlist(webId, items);
