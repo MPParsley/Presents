@@ -310,10 +310,28 @@
         let occasionLoaded = false;
         let isLoadingOccasion = false;
 
+        // Capture occasion URL immediately before Solid library can modify it
+        const initialOccasionUrl = new URLSearchParams(window.location.search).get('occasion');
+        if (initialOccasionUrl) {
+            // Store in sessionStorage so it survives any redirects
+            sessionStorage.setItem('current_occasion_url', initialOccasionUrl);
+            console.log('Captured occasion URL:', initialOccasionUrl);
+        }
+
         /**
-         * Get occasion URL from query parameter
+         * Get occasion URL - uses captured value or sessionStorage
          */
         function getOccasionUrl() {
+            // First check if we captured it at page load
+            if (initialOccasionUrl) {
+                return initialOccasionUrl;
+            }
+            // Then check sessionStorage (survives redirects)
+            const stored = sessionStorage.getItem('current_occasion_url');
+            if (stored) {
+                return stored;
+            }
+            // Finally check current URL
             const params = new URLSearchParams(window.location.search);
             return params.get('occasion');
         }
