@@ -1,3 +1,8 @@
+---
+layout: default
+title: Hoe maak ik een Solid account?
+---
+
 # Hoe maak ik een Solid account?
 
 ## Wat is Solid?
