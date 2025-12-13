@@ -295,7 +295,7 @@ export async function fetchParticipants(registrationsUrl: string): Promise<Parti
 	console.log('[fetchParticipants] Container URL:', registrationsUrl);
 	console.log('[fetchParticipants] Container turtle:', turtle);
 
-	const resources: string[] = [];
+	const resourceSet = new Set<string>();
 
 	// Find all registration .ttl files directly (simpler and more reliable)
 	const resourceRegex = /<(reg-[^>]+\.ttl)>/g;
@@ -303,10 +303,11 @@ export async function fetchParticipants(registrationsUrl: string): Promise<Parti
 
 	while ((match = resourceRegex.exec(turtle)) !== null) {
 		const resourceUrl = match[1];
-		console.log('[fetchParticipants] Found resource:', resourceUrl);
-		resources.push(resourceUrl.startsWith('http') ? resourceUrl : registrationsUrl + resourceUrl);
+		const fullUrl = resourceUrl.startsWith('http') ? resourceUrl : registrationsUrl + resourceUrl;
+		resourceSet.add(fullUrl);
 	}
 
+	const resources = Array.from(resourceSet);
 	console.log('[fetchParticipants] Resources to fetch:', resources);
 
 	const participants: Participant[] = [];
