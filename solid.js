@@ -23,20 +23,8 @@ import {
     getDefaultSession
 } from "https://cdn.skypack.dev/@inrupt/solid-client-authn-browser";
 
-import {
-    getSolidDataset,
-    getThingAll,
-    getUrlAll,
-    getStringNoLocale,
-    getUrl,
-    getInteger,
-    asUrl,
-    createSolidDataset,
-    buildThing,
-    createThing,
-    setThing,
-    saveSolidDatasetAt
-} from "https://cdn.skypack.dev/@inrupt/solid-client";
+// Import solid-client as a module (Skypack doesn't export all named exports properly)
+import * as solidClient from "https://cdn.skypack.dev/@inrupt/solid-client";
 
 // ===========================================
 // CONSTANTS
@@ -305,26 +293,26 @@ async function getWishlistFromPod(webId) {
         const fetchFn = session && session.info.isLoggedIn ? session.fetch : fetch;
 
         // Fetch the dataset
-        const dataset = await getSolidDataset(wishlistUrl, {
+        const dataset = await solidClient.getSolidDataset(wishlistUrl, {
             fetch: fetchFn
         });
 
         // Get all things from the dataset
-        const things = getThingAll(dataset);
+        const things = solidClient.getThingAll(dataset);
 
         // Parse wishlist items
         const items = things
             .filter(thing => {
-                const types = getUrlAll(thing, RDF_NS + 'type');
+                const types = solidClient.getUrlAll(thing, RDF_NS + 'type');
                 return types.includes(SCHEMA_NS + 'ListItem');
             })
             .map(thing => ({
-                id: asUrl(thing),
-                name: getStringNoLocale(thing, SCHEMA_NS + 'name') || '',
-                description: getStringNoLocale(thing, SCHEMA_NS + 'description') || '',
-                url: getUrl(thing, SCHEMA_NS + 'url') || '',
-                priority: getInteger(thing, SEG_NS + 'priority') || 3,
-                position: getInteger(thing, SCHEMA_NS + 'position') || 0
+                id: thing.url || generateId(),
+                name: solidClient.getStringNoLocale(thing, SCHEMA_NS + 'name') || '',
+                description: solidClient.getStringNoLocale(thing, SCHEMA_NS + 'description') || '',
+                url: solidClient.getUrl(thing, SCHEMA_NS + 'url') || '',
+                priority: solidClient.getInteger(thing, SEG_NS + 'priority') || 3,
+                position: solidClient.getInteger(thing, SCHEMA_NS + 'position') || 0
             }))
             .sort((a, b) => b.priority - a.priority || a.position - b.position);
 
@@ -365,13 +353,13 @@ async function saveWishlistToPod(items) {
     const session = getSolidSession();
 
     // Create a new dataset
-    let dataset = createSolidDataset();
+    let dataset = solidClient.createSolidDataset();
 
     // Add each item as a Thing
     items.forEach((item, index) => {
         const itemUrl = wishlistUrl + '#item-' + (item.id || generateId());
 
-        let thing = buildThing(createThing({ url: itemUrl }))
+        let thing = solidClient.buildThing(solidClient.createThing({ url: itemUrl }))
             .addUrl(RDF_NS + 'type', SCHEMA_NS + 'ListItem')
             .addStringNoLocale(SCHEMA_NS + 'name', item.name || '')
             .addInteger(SCHEMA_NS + 'position', index + 1)
@@ -385,11 +373,11 @@ async function saveWishlistToPod(items) {
             thing = thing.addUrl(SCHEMA_NS + 'url', item.url);
         }
 
-        dataset = setThing(dataset, thing.build());
+        dataset = solidClient.setThing(dataset, thing.build());
     });
 
     // Save to Pod
-    await saveSolidDatasetAt(wishlistUrl, dataset, {
+    await solidClient.saveSolidDatasetAt(wishlistUrl, dataset, {
         fetch: session.fetch
     });
 
