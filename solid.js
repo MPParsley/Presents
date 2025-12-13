@@ -292,8 +292,10 @@ function getPodBaseUrl(webId) {
 function parseTurtleWishlist(turtle, baseUrl) {
     const items = [];
 
-    // Match each item block: <#item-xxx> ... .
-    const itemRegex = /<#(item-[^>]+)>\s+a\s+schema:ListItem\s*;([^.]+)\./g;
+    // Match each item block: <#xxx> a schema:ListItem ; ... .
+    // Use [\s\S]+? to match properties including URLs with periods
+    // End pattern is whitespace + period (Turtle statement terminator)
+    const itemRegex = /<#([^>]+)>\s+a\s+schema:ListItem\s*;([\s\S]+?)\s+\./g;
     let match;
 
     while ((match = itemRegex.exec(turtle)) !== null) {
@@ -345,7 +347,11 @@ function generateTurtleWishlist(items, baseUrl) {
 `;
 
     items.forEach((item, index) => {
-        const itemId = item.id || generateId();
+        // Ensure ID has item- prefix for consistency
+        let itemId = item.id || generateId();
+        if (!itemId.startsWith('item-')) {
+            itemId = 'item-' + itemId;
+        }
         turtle += `<#${itemId}> a schema:ListItem ;\n`;
         turtle += `    schema:name "${escapeTurtleString(item.name || '')}" ;\n`;
         turtle += `    schema:position ${index + 1} ;\n`;
