@@ -812,7 +812,7 @@ function generateOccasionTurtle(data) {
 @prefix seg: <https://segersrosseel.be/ns/gift#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<#occasion> a schema:Event ;
+<> a schema:Event ;
     schema:name "${escapeTurtleString(data.name)}" ;
     seg:adminWebId <${data.adminWebId}>${data.date ? ` ;
     schema:startDate "${data.date}"^^xsd:date` : ''} .
@@ -887,6 +887,7 @@ async function fetchOccasion(occasionUrl) {
 
 /**
  * Parse occasion Turtle data
+ * Supports both <> and <#occasion> as subject (for backwards compatibility)
  */
 function parseOccasionTurtle(turtle, baseUrl) {
     const occasion = {
@@ -896,7 +897,7 @@ function parseOccasionTurtle(turtle, baseUrl) {
         registrationsUrl: baseUrl.replace('occasion.ttl', 'registrations/')
     };
 
-    // Extract name
+    // Extract name (works regardless of subject)
     const nameMatch = turtle.match(/schema:name\s+"([^"]+)"/);
     if (nameMatch) occasion.name = nameMatch[1];
 
