@@ -402,8 +402,13 @@
             }
 
             if (!recipientWebId) {
-                // No wishlist available - hide the section
-                section.style.display = 'none';
+                section.style.display = 'block';
+                title.textContent = `Wishlist van ${assignment.recipientName}`;
+                content.innerHTML = `
+                    <div class="wishlist-empty">
+                        Er is geen wishlist beschikbaar.
+                    </div>
+                `;
                 return;
             }
 
