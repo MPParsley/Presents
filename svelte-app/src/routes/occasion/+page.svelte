@@ -81,7 +81,19 @@
 				isRegistered = allParticipants.some((p) => p.webId === $webId);
 			}
 		} catch (e) {
-			error = 'Kon gelegenheid niet laden: ' + (e as Error).message;
+			const errorMessage = (e as Error).message;
+			// If occasion not found (404), clear stale sessionStorage and reset state
+			if (errorMessage.includes('404')) {
+				sessionStorage.removeItem('current_occasion_url');
+				occasionUrl = null;
+				currentOccasion = null;
+				// Load my occasions list instead
+				if ($webId) {
+					await loadMyOccasions();
+				}
+			} else {
+				error = 'Kon gelegenheid niet laden: ' + errorMessage;
+			}
 		} finally {
 			isLoading = false;
 		}
