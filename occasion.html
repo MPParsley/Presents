@@ -226,6 +226,14 @@
             </div>
         </section>
 
+        <!-- My occasions list (shown when logged in and no occasion in URL) -->
+        <section id="my-occasions-section" class="card" style="display: none;">
+            <h2>Mijn Gelegenheden</h2>
+            <div id="my-occasions-list">
+                <p><em>Laden...</em></p>
+            </div>
+        </section>
+
         <!-- Create new occasion (shown when no occasion in URL and logged in) -->
         <section id="create-section" class="card" style="display: none;">
             <h2>Nieuwe Gelegenheid Aanmaken</h2>
@@ -558,6 +566,80 @@
         }
 
         /**
+         * Load user's existing occasions from their Pod
+         */
+        async function loadMyOccasions() {
+            const container = document.getElementById('my-occasions-list');
+            if (!container) return;
+
+            const webId = typeof getCurrentWebId === 'function' ? getCurrentWebId() : null;
+            if (!webId) {
+                container.innerHTML = '<p><em>Log in om je gelegenheden te zien.</em></p>';
+                return;
+            }
+
+            try {
+                const podBase = webId.split('/profile/')[0];
+                const occasionsContainerUrl = `${podBase}/public/giftshuffler/occasions/`;
+
+                const session = typeof getSolidSession === 'function' ? getSolidSession() : null;
+                const fetchFn = session && session.info.isLoggedIn ? session.fetch.bind(session) : fetch;
+
+                const response = await fetchFn(occasionsContainerUrl, {
+                    headers: { 'Accept': 'text/turtle' }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        container.innerHTML = '<p><em>Je hebt nog geen gelegenheden aangemaakt.</em></p>';
+                        return;
+                    }
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const turtle = await response.text();
+
+                // Find all containers (occasions) - look for ldp:contains
+                const containerRegex = /ldp:contains\s+<([^>]+)>/g;
+                const occasions = [];
+                let match;
+
+                while ((match = containerRegex.exec(turtle)) !== null) {
+                    const folderUrl = match[1];
+                    // Skip if it's not a folder (folders typically don't have extensions)
+                    if (!folderUrl.includes('.')) {
+                        const fullUrl = folderUrl.startsWith('http') ? folderUrl : occasionsContainerUrl + folderUrl;
+                        occasions.push({
+                            name: folderUrl.replace(/\/$/, ''),
+                            url: fullUrl + (fullUrl.endsWith('/') ? '' : '/') + 'occasion.ttl'
+                        });
+                    }
+                }
+
+                if (occasions.length === 0) {
+                    container.innerHTML = '<p><em>Je hebt nog geen gelegenheden aangemaakt.</em></p>';
+                    return;
+                }
+
+                container.innerHTML = `
+                    <ul class="participant-list">
+                        ${occasions.map(o => `
+                            <li>
+                                <span class="participant-name">${escapeHtml(o.name)}</span>
+                                <a href="occasion.html?occasion=${encodeURIComponent(o.url)}" class="button primary-btn" style="text-decoration: none; padding: 5px 10px;">Bekijk</a>
+                            </li>
+                        `).join('')}
+                    </ul>
+                `;
+            } catch (error) {
+                console.error('Error loading occasions:', error);
+                container.innerHTML = '<p><em>Kon gelegenheden niet laden.</em></p>';
+            }
+        }
+
+        let myOccasionsLoaded = false;
+
+        /**
          * Update UI based on login state
          */
         function updateUI() {
@@ -568,18 +650,26 @@
                 // Viewing an occasion
                 document.getElementById('create-section').style.display = 'none';
                 document.getElementById('no-occasion-section').style.display = 'none';
+                document.getElementById('my-occasions-section').style.display = 'none';
                 // Only load once
                 if (!occasionLoaded && !isLoadingOccasion) {
                     loadOccasion(occasionUrl);
                 }
             } else if (isLoggedIn) {
-                // No occasion, but logged in - show create form
+                // No occasion, but logged in - show create form and my occasions
                 document.getElementById('create-section').style.display = 'block';
+                document.getElementById('my-occasions-section').style.display = 'block';
                 document.getElementById('no-occasion-section').style.display = 'none';
                 document.getElementById('occasion-section').style.display = 'none';
+                // Load my occasions once
+                if (!myOccasionsLoaded) {
+                    myOccasionsLoaded = true;
+                    loadMyOccasions();
+                }
             } else {
                 // Not logged in, no occasion
                 document.getElementById('create-section').style.display = 'none';
+                document.getElementById('my-occasions-section').style.display = 'none';
                 document.getElementById('no-occasion-section').style.display = 'block';
                 document.getElementById('occasion-section').style.display = 'none';
             }
