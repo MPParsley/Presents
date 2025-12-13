@@ -88,14 +88,24 @@ function storeQueryParams() {
 
 /**
  * Restore query parameters after login redirect
- * Only restores if we just came back from OIDC and params are missing
+ * Only restores if we just came back from OIDC callback (code/state in URL)
  */
 function restoreQueryParams() {
     const savedParams = sessionStorage.getItem('solid_redirect_params');
     if (!savedParams) return;
 
-    // Check if we're missing the saved params in current URL
     const currentParams = new URLSearchParams(window.location.search);
+
+    // Only restore if we just came from OIDC (has code/state params)
+    // This prevents false triggers when already logged in
+    const isOidcCallback = currentParams.has('code') || currentParams.has('state');
+    if (!isOidcCallback) {
+        // Not from OIDC, clear stale data and return
+        sessionStorage.removeItem('solid_redirect_params');
+        return;
+    }
+
+    // Check if we're missing the saved params in current URL
     const savedParamsObj = new URLSearchParams(savedParams);
 
     let needsRestore = false;
@@ -106,16 +116,19 @@ function restoreQueryParams() {
         }
     }
 
+    // Remove OIDC params from final URL
+    currentParams.delete('code');
+    currentParams.delete('state');
+
     // Clear saved params
     sessionStorage.removeItem('solid_redirect_params');
 
     // If we need to restore, redirect to the correct URL
     if (needsRestore) {
         const newUrl = window.location.pathname + '?' + currentParams.toString();
-        console.log('Restoring query params, redirecting to:', newUrl);
-        // Use location.replace to avoid back-button issues
+        console.log('Restoring query params after OIDC, redirecting to:', newUrl);
         window.location.replace(newUrl);
-        return; // Stop execution, page will reload
+        return;
     }
 }
 
