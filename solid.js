@@ -61,10 +61,59 @@ async function initSolid() {
             restorePreviousSession: true
         });
 
+        // Restore query parameters that were saved before login redirect
+        restoreQueryParams();
+
         // Update UI based on session state
         updateSolidUI();
     } catch (error) {
         console.error('Error initializing SOLID:', error);
+    }
+}
+
+/**
+ * Store current query parameters before login redirect
+ * These will be restored after the OIDC callback
+ */
+function storeQueryParams() {
+    const params = new URLSearchParams(window.location.search);
+    // Remove OIDC params that will be added by the IDP
+    params.delete('code');
+    params.delete('state');
+
+    if (params.toString()) {
+        sessionStorage.setItem('solid_redirect_params', params.toString());
+    }
+}
+
+/**
+ * Restore query parameters after login redirect
+ * Only restores if we just came back from OIDC and params are missing
+ */
+function restoreQueryParams() {
+    const savedParams = sessionStorage.getItem('solid_redirect_params');
+    if (!savedParams) return;
+
+    // Check if we're missing the saved params in current URL
+    const currentParams = new URLSearchParams(window.location.search);
+    const savedParamsObj = new URLSearchParams(savedParams);
+
+    let needsRestore = false;
+    for (const [key, value] of savedParamsObj) {
+        if (!currentParams.has(key)) {
+            needsRestore = true;
+            currentParams.set(key, value);
+        }
+    }
+
+    // Clear saved params
+    sessionStorage.removeItem('solid_redirect_params');
+
+    // If we need to restore, update the URL without reloading
+    if (needsRestore) {
+        const newUrl = window.location.pathname + '?' + currentParams.toString();
+        window.history.replaceState({}, '', newUrl);
+        console.log('Restored query params:', newUrl);
     }
 }
 
@@ -113,6 +162,9 @@ async function loginToSolid() {
     }
 
     try {
+        // Store current query params so they can be restored after OIDC redirect
+        storeQueryParams();
+
         // Build redirect URL without hash fragment (not allowed by Solid OIDC)
         // Also remove reserved query params 'code' and 'state'
         const url = new URL(window.location.href);
