@@ -1,5 +1,4 @@
 ---
-layout: default
 title: Hoe maak ik een Solid account?
 ---
 
