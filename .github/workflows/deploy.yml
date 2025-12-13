@@ -2,7 +2,9 @@ name: Deploy SvelteKit to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'claude/wishlist-solid-design-*'
   workflow_dispatch:
 
 permissions:
