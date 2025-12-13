@@ -16,15 +16,15 @@
 // IMPORTS FROM ESM.SH CDN
 // ===========================================
 
-// Using esm.sh CDN which handles modern packages better than Skypack
+// Using esm.sh CDN with pinned versions for stability
 import {
     login,
     logout,
     handleIncomingRedirect,
     getDefaultSession
-} from "https://esm.sh/@inrupt/solid-client-authn-browser@2";
+} from "https://esm.sh/@inrupt/solid-client-authn-browser@1.11.7";
 
-import * as solidClient from "https://esm.sh/@inrupt/solid-client@2";
+import * as solidClient from "https://esm.sh/@inrupt/solid-client@1.30.2";
 
 // ===========================================
 // CONSTANTS
@@ -628,7 +628,7 @@ async function showPersonWishlist(personId) {
     modal.style.display = 'flex';
 
     if (!webId) {
-        contentEl.innerHTML = '<p><em>Deze persoon heeft geen Solid Pod gekoppeld.</em></p>';
+        contentEl.innerHTML = '<p><em>Geen wishlist beschikbaar.</em></p>';
         return;
     }
 

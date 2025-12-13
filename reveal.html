@@ -402,14 +402,8 @@
             }
 
             if (!recipientWebId) {
-                section.style.display = 'block';
-                title.textContent = `Wishlist van ${assignment.recipientName}`;
-                content.innerHTML = `
-                    <div class="wishlist-empty">
-                        ${escapeHtml(assignment.recipientName)} heeft nog geen Solid Pod gekoppeld.<br>
-                        Er is geen wishlist beschikbaar.
-                    </div>
-                `;
+                // No wishlist available - hide the section
+                section.style.display = 'none';
                 return;
             }
 
