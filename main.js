@@ -1164,6 +1164,156 @@ function generateShareLink(giverName, recipientName, occasionName, wishlist = []
 }
 
 /**
+ * Generate a wishlist management link for a person
+ * This link allows the person to add/remove items from their own wishlist
+ */
+function generateWishlistLink(personName, wishlist = []) {
+    const data = {
+        n: personName,
+        w: wishlist
+    };
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+    const baseUrl = window.location.href.replace(/\/[^\/]*$/, '/');
+    return baseUrl + 'wishlist.html#' + encoded;
+}
+
+/**
+ * Show wishlist management links modal
+ */
+function showWishlistLinks() {
+    const persons = getPersons();
+    const groups = getGroups();
+    const wishlists = getWishlists();
+
+    if (persons.length === 0) {
+        alert('No persons added yet.');
+        return;
+    }
+
+    // Build a map: personId -> groupName
+    const personToGroup = {};
+    groups.forEach(g => {
+        g.memberIds.forEach(pId => {
+            personToGroup[pId] = g.name;
+        });
+    });
+
+    // Generate links for each person
+    const links = persons.map(p => {
+        const personWishlist = wishlists[p.id] || [];
+        const groupName = personToGroup[p.id] || 'No group';
+        const link = generateWishlistLink(p.name, personWishlist);
+        return { personName: p.name, groupName, link, wishlistCount: personWishlist.length };
+    });
+
+    // Group links by group name
+    const linksByGroup = {};
+    links.forEach(l => {
+        if (!linksByGroup[l.groupName]) {
+            linksByGroup[l.groupName] = [];
+        }
+        linksByGroup[l.groupName].push(l);
+    });
+
+    // Sort groups and links within groups
+    const sortedGroupNames = Object.keys(linksByGroup).sort();
+    sortedGroupNames.forEach(groupName => {
+        linksByGroup[groupName].sort((a, b) => a.personName.localeCompare(b.personName));
+    });
+
+    // Create formatted text for "copy all"
+    const allLinksText = links
+        .sort((a, b) => a.personName.localeCompare(b.personName))
+        .map(l => `${l.personName}:\n${l.link}`).join('\n\n');
+
+    // Create formatted text per group
+    const groupLinksText = {};
+    sortedGroupNames.forEach(groupName => {
+        groupLinksText[groupName] = linksByGroup[groupName]
+            .map(l => `${l.personName}:\n${l.link}`).join('\n\n');
+    });
+
+    // Store for copy functions
+    window._allWishlistLinks = allLinksText;
+    window._groupWishlistLinks = groupLinksText;
+
+    // Create modal content with groups
+    const groupsHtml = sortedGroupNames.map(groupName => `
+        <div class="share-group">
+            <div class="share-group-header">
+                <strong>${escapeHtml(groupName)}</strong>
+                <button class="small-btn" onclick="copyGroupWishlistLinks('${escapeHtml(groupName)}', this)">Copy Group</button>
+            </div>
+            <ul class="share-links-list">
+                ${linksByGroup[groupName].map(l => `
+                    <li>
+                        <span class="share-name">${escapeHtml(l.personName)} ${l.wishlistCount > 0 ? `<span class="wishlist-badge">${l.wishlistCount}</span>` : ''}</span>
+                        <button class="small-btn" onclick="copyShareLink('${escapeHtml(l.link)}', this)">Copy</button>
+                    </li>
+                `).join('')}
+            </ul>
+        </div>
+    `).join('');
+
+    const modalHtml = `
+        <div class="share-modal-overlay" onclick="closeShareModal(event)">
+            <div class="share-modal" onclick="event.stopPropagation()">
+                <h3>Wishlist Management Links</h3>
+                <p class="help-text">Send each person their personal link so they can manage their own wishlist. When they update it, they can send you back the updated link.</p>
+                <div class="share-actions">
+                    <button class="small-btn primary-btn" onclick="copyAllWishlistLinks(this)">Copy All Links</button>
+                </div>
+                ${groupsHtml}
+                <button class="small-btn" onclick="closeShareModal()" style="margin-top: 15px;">Close</button>
+            </div>
+        </div>
+    `;
+
+    // Remove existing modal if any
+    const existing = document.querySelector('.share-modal-overlay');
+    if (existing) existing.remove();
+
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+/**
+ * Copy all wishlist links to clipboard
+ */
+function copyAllWishlistLinks(button) {
+    if (!window._allWishlistLinks) return;
+
+    navigator.clipboard.writeText(window._allWishlistLinks).then(() => {
+        const originalText = button.textContent;
+        button.textContent = 'All Copied!';
+        setTimeout(() => {
+            button.textContent = originalText;
+        }, 2000);
+    }).catch(err => {
+        alert('Failed to copy: ' + err);
+    });
+}
+
+/**
+ * Copy all wishlist links for a specific group
+ */
+function copyGroupWishlistLinks(groupName, button) {
+    if (!window._groupWishlistLinks || !window._groupWishlistLinks[groupName]) return;
+
+    navigator.clipboard.writeText(window._groupWishlistLinks[groupName]).then(() => {
+        const originalText = button.textContent;
+        button.textContent = 'Copied!';
+        button.classList.add('primary-btn');
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.classList.remove('primary-btn');
+        }, 2000);
+    }).catch(err => {
+        alert('Failed to copy: ' + err);
+    });
+}
+
+/**
  * Show share links for an edition
  */
 function showShareLinks(editionId) {
