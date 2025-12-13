@@ -117,6 +117,82 @@
         .reveal-page header h1 {
             color: #667eea;
         }
+
+        /* Registration section styles */
+        .registration-box {
+            background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+            border: 2px solid #4caf50;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 15px;
+        }
+
+        .registration-box h4 {
+            color: #2e7d32;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+        .registration-box p {
+            margin: 10px 0;
+            color: #555;
+        }
+
+        .registration-link-box {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 15px 0;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+
+        .copy-success {
+            color: #4caf50;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        /* Manual lookup styles */
+        .manual-lookup {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .manual-lookup h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #555;
+            font-size: 0.95rem;
+        }
+
+        .lookup-input-row {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .lookup-input-row input {
+            flex: 1;
+            min-width: 120px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .lookup-input-row .domain-suffix {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .lookup-input-row button {
+            padding: 8px 15px;
+        }
     </style>
 </head>
 <body class="reveal-page">
@@ -141,6 +217,18 @@
             <div id="recipient-wishlist-content">
                 <div class="loading">Wishlist laden...</div>
             </div>
+            <!-- Manual lookup - shown when recipient has no WebID -->
+            <div id="manual-lookup-section" class="manual-lookup" style="display: none;">
+                <h4>Ken je de Solid username van <span id="lookup-recipient-name"></span>?</h4>
+                <div class="lookup-input-row">
+                    <input type="text" id="lookup-username" placeholder="username">
+                    <span class="domain-suffix">.solidcommunity.net</span>
+                    <button onclick="lookupWishlistByUsername()">Zoek</button>
+                </div>
+                <p style="font-size: 0.85rem; color: #888; margin-top: 10px;">
+                    Vraag de ontvanger om in te loggen en hun wishlist te registreren.
+                </p>
+            </div>
         </div>
 
         <!-- Solid login & own wishlist management -->
@@ -164,6 +252,17 @@
                 <div class="form-row">
                     <button onclick="showWishlistEditor()" class="primary-btn">Beheer Mijn Wishlist</button>
                     <button onclick="logoutFromSolid()">Uitloggen</button>
+                </div>
+
+                <!-- Registration section - shows when logged in -->
+                <div id="registration-section" class="registration-box">
+                    <h4>Registreer je wishlist voor deze gelegenheid</h4>
+                    <p>Deel onderstaande link met de organisator zodat anderen jouw wishlist kunnen zien:</p>
+                    <div id="registration-link-box" class="registration-link-box">
+                        <span id="registration-link"></span>
+                    </div>
+                    <button onclick="copyRegistrationLink()" class="primary-btn">Kopieer link</button>
+                    <span id="copy-success" class="copy-success" style="display: none;">Gekopieerd!</span>
                 </div>
             </div>
         </section>
@@ -261,7 +360,7 @@
 
         /**
          * Decode assignment from hash (old format)
-         * Old format: {g: "giver", r: "recipient", o: "occasion", w: "webId" (optional)}
+         * Old format: {g: "giver", r: "recipient", o: "occasion", w: "recipientWebId", gw: "giverWebId"}
          */
         function decodeOldHashFormat(hash) {
             try {
@@ -278,7 +377,9 @@
                         occasionName: data.o || '',
                         occasionDate: null,
                         recipientWebId: data.w || null,
-                        recipientWishlistUrl: data.w ? getPodBaseUrl(data.w) + '/public/giftshuffler-wishlist.ttl' : null
+                        recipientWishlistUrl: data.w ? getPodBaseUrl(data.w) + '/public/giftshuffler-wishlist.ttl' : null,
+                        // gw = giver's WebID (from self-registration)
+                        giverWebId: data.gw || null
                     };
                 }
                 return null;
@@ -406,6 +507,8 @@
             const section = document.getElementById('recipient-wishlist-section');
             const title = document.getElementById('recipient-wishlist-title');
             const content = document.getElementById('recipient-wishlist-content');
+            const manualLookup = document.getElementById('manual-lookup-section');
+            const lookupName = document.getElementById('lookup-recipient-name');
 
             // Try to get WebID from assignment, or look it up by name
             let recipientWebId = assignment.recipientWebId;
@@ -421,7 +524,17 @@
                         Er is geen wishlist beschikbaar.
                     </div>
                 `;
+                // Show manual lookup option
+                if (manualLookup && lookupName) {
+                    lookupName.textContent = assignment.recipientName;
+                    manualLookup.style.display = 'block';
+                }
                 return;
+            }
+
+            // Hide manual lookup if we have a WebID
+            if (manualLookup) {
+                manualLookup.style.display = 'none';
             }
 
             // Update assignment with found WebID for later use
@@ -473,6 +586,150 @@
             return div.innerHTML;
         }
 
+        // ===========================================
+        // REGISTRATION & LOOKUP FUNCTIONS
+        // ===========================================
+
+        /**
+         * Generate a registration link with the current user's WebID
+         * This link can be shared with the admin to update reveal links
+         */
+        function generateRegistrationLink() {
+            if (!currentAssignment) return null;
+
+            const webId = typeof getCurrentWebId === 'function' ? getCurrentWebId() : null;
+            if (!webId) return null;
+
+            // Create link data with giver's WebID included
+            // The giver registers their own WebID so others can see their wishlist
+            const linkData = {
+                g: currentAssignment.giverName,
+                r: currentAssignment.recipientName,
+                o: currentAssignment.occasionName,
+                // Include recipient's WebID if known
+                w: currentAssignment.recipientWebId || null,
+                // NEW: Include giver's WebID for registration
+                gw: webId
+            };
+
+            const encoded = btoa(JSON.stringify(linkData));
+            return window.location.origin + window.location.pathname + '#' + encoded;
+        }
+
+        /**
+         * Update the registration section with current user's info
+         */
+        function updateRegistrationSection() {
+            const section = document.getElementById('registration-section');
+            const linkSpan = document.getElementById('registration-link');
+
+            if (!section || !linkSpan) return;
+
+            const isLoggedIn = typeof isSolidLoggedIn === 'function' && isSolidLoggedIn();
+
+            if (isLoggedIn && currentAssignment) {
+                const regLink = generateRegistrationLink();
+                if (regLink) {
+                    linkSpan.textContent = regLink;
+                    section.style.display = 'block';
+                } else {
+                    section.style.display = 'none';
+                }
+            } else {
+                section.style.display = 'none';
+            }
+        }
+
+        /**
+         * Copy registration link to clipboard
+         */
+        function copyRegistrationLink() {
+            const linkSpan = document.getElementById('registration-link');
+            const successSpan = document.getElementById('copy-success');
+
+            if (!linkSpan) return;
+
+            const link = linkSpan.textContent;
+            navigator.clipboard.writeText(link).then(() => {
+                if (successSpan) {
+                    successSpan.style.display = 'inline';
+                    setTimeout(() => {
+                        successSpan.style.display = 'none';
+                    }, 2000);
+                }
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Kon link niet kopiëren. Selecteer de link handmatig.');
+            });
+        }
+
+        /**
+         * Lookup wishlist by Solid username
+         */
+        async function lookupWishlistByUsername() {
+            const usernameInput = document.getElementById('lookup-username');
+            const content = document.getElementById('recipient-wishlist-content');
+            const manualLookup = document.getElementById('manual-lookup-section');
+
+            if (!usernameInput || !content) return;
+
+            const username = usernameInput.value.trim().toLowerCase();
+            if (!username) {
+                alert('Vul een username in');
+                return;
+            }
+
+            // Construct WebID from username
+            const webId = `https://${username}.solidcommunity.net/profile/card#me`;
+
+            content.innerHTML = '<div class="loading">Wishlist zoeken...</div>';
+
+            try {
+                const items = await getWishlistFromPod(webId);
+
+                if (items.length === 0) {
+                    content.innerHTML = `
+                        <div class="wishlist-empty">
+                            Geen wishlist gevonden voor ${escapeHtml(username)}.solidcommunity.net
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Success! Hide manual lookup and show wishlist
+                if (manualLookup) {
+                    manualLookup.style.display = 'none';
+                }
+
+                // Update assignment with found WebID
+                if (currentAssignment) {
+                    currentAssignment.recipientWebId = webId;
+                }
+
+                content.innerHTML = items.map(item => `
+                    <div class="wishlist-view-item">
+                        <div class="wishlist-item-header">
+                            <span class="wishlist-priority">${'&#11088;'.repeat(item.priority)}</span>
+                            <strong>${escapeHtml(item.name)}</strong>
+                        </div>
+                        ${item.description ? `<p class="wishlist-description">${escapeHtml(item.description)}</p>` : ''}
+                        ${item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener" class="wishlist-link">Bekijk link &rarr;</a>` : ''}
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error looking up wishlist:', error);
+                content.innerHTML = `
+                    <div class="wishlist-empty">
+                        Kon geen wishlist vinden voor ${escapeHtml(username)}.solidcommunity.net
+                    </div>
+                `;
+            }
+        }
+
+        // Expose functions to window for onclick handlers
+        window.copyRegistrationLink = copyRegistrationLink;
+        window.lookupWishlistByUsername = lookupWishlistByUsername;
+
         /**
          * Initialize the reveal page
          */
@@ -494,6 +751,15 @@
             }
 
             renderAssignment(assignment);
+
+            // Update registration section after a short delay (wait for Solid init)
+            setTimeout(updateRegistrationSection, 500);
+
+            // Also update when Solid login state changes
+            // Check periodically for login state changes
+            setInterval(() => {
+                updateRegistrationSection();
+            }, 2000);
         }
 
         // Initialize when DOM is ready
