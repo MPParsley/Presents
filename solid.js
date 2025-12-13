@@ -745,6 +745,312 @@ function closeWishlistViewer() {
 }
 
 // ===========================================
+// OCCASION MANAGEMENT
+// ===========================================
+
+const GIFTSHUFFLER_PATH = '/public/giftshuffler';
+
+/**
+ * Create an occasion in the user's Pod
+ * Creates: /public/giftshuffler/occasions/{id}/
+ *          - occasion.ttl (occasion metadata)
+ *          - registrations/ (container for participant registrations)
+ *          - registrations/.acl (public write access)
+ */
+async function createOccasionInPod(occasionData) {
+    if (!isSolidLoggedIn()) {
+        throw new Error('Niet ingelogd bij Solid');
+    }
+
+    const session = getSolidSession();
+    const webId = getCurrentWebId();
+    const podBase = getPodBaseUrl(webId);
+    const occasionPath = `${GIFTSHUFFLER_PATH}/occasions/${occasionData.id}`;
+    const occasionUrl = `${podBase}${occasionPath}/occasion.ttl`;
+    const registrationsUrl = `${podBase}${occasionPath}/registrations/`;
+
+    // Step 1: Create occasion.ttl with metadata
+    const occasionTurtle = generateOccasionTurtle(occasionData);
+
+    const occasionResponse = await session.fetch(occasionUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'text/turtle' },
+        body: occasionTurtle
+    });
+
+    if (!occasionResponse.ok) {
+        throw new Error(`Failed to create occasion: ${occasionResponse.status}`);
+    }
+
+    // Step 2: Create registrations container
+    // Creating a resource inside will auto-create the container
+    const placeholderUrl = `${registrationsUrl}.placeholder`;
+    const placeholderResponse = await session.fetch(placeholderUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'text/plain' },
+        body: 'placeholder'
+    });
+
+    if (!placeholderResponse.ok) {
+        console.warn('Could not create registrations container placeholder');
+    }
+
+    // Step 3: Set ACL for public write on registrations container
+    await setPublicWriteACL(registrationsUrl);
+
+    return {
+        occasionUrl: occasionUrl,
+        registrationsUrl: registrationsUrl
+    };
+}
+
+/**
+ * Generate Turtle for occasion metadata
+ */
+function generateOccasionTurtle(data) {
+    return `@prefix schema: <http://schema.org/> .
+@prefix seg: <https://segersrosseel.be/ns/gift#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<#occasion> a schema:Event ;
+    schema:name "${escapeTurtleString(data.name)}" ;
+    seg:adminWebId <${data.adminWebId}>${data.date ? ` ;
+    schema:startDate "${data.date}"^^xsd:date` : ''} .
+`;
+}
+
+/**
+ * Set public write ACL on a container
+ */
+async function setPublicWriteACL(containerUrl) {
+    if (!isSolidLoggedIn()) {
+        throw new Error('Niet ingelogd bij Solid');
+    }
+
+    const session = getSolidSession();
+    const aclUrl = containerUrl + '.acl';
+
+    // ACL content that allows:
+    // - Owner: full control
+    // - Public: read and append (create new files)
+    const webId = getCurrentWebId();
+    const aclTurtle = `@prefix acl: <http://www.w3.org/ns/auth/acl#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+
+# Owner has full control
+<#owner>
+    a acl:Authorization ;
+    acl:agent <${webId}> ;
+    acl:accessTo <./> ;
+    acl:default <./> ;
+    acl:mode acl:Read, acl:Write, acl:Control .
+
+# Public can read and append (create new files)
+<#public>
+    a acl:Authorization ;
+    acl:agentClass foaf:Agent ;
+    acl:accessTo <./> ;
+    acl:default <./> ;
+    acl:mode acl:Read, acl:Append .
+`;
+
+    const response = await session.fetch(aclUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'text/turtle' },
+        body: aclTurtle
+    });
+
+    if (!response.ok) {
+        console.warn(`Could not set ACL: ${response.status}`);
+        // Don't throw - ACL might already exist or server might not support it
+    }
+}
+
+/**
+ * Fetch occasion data from URL
+ */
+async function fetchOccasion(occasionUrl) {
+    const session = getSolidSession();
+    const fetchFn = session && session.info.isLoggedIn ? session.fetch.bind(session) : fetch;
+
+    const response = await fetchFn(occasionUrl, {
+        headers: { 'Accept': 'text/turtle' }
+    });
+
+    if (!response.ok) {
+        throw new Error(`Could not fetch occasion: ${response.status}`);
+    }
+
+    const turtle = await response.text();
+    return parseOccasionTurtle(turtle, occasionUrl);
+}
+
+/**
+ * Parse occasion Turtle data
+ */
+function parseOccasionTurtle(turtle, baseUrl) {
+    const occasion = {
+        name: '',
+        date: null,
+        adminWebId: null,
+        registrationsUrl: baseUrl.replace('occasion.ttl', 'registrations/')
+    };
+
+    // Extract name
+    const nameMatch = turtle.match(/schema:name\s+"([^"]+)"/);
+    if (nameMatch) occasion.name = nameMatch[1];
+
+    // Extract date
+    const dateMatch = turtle.match(/schema:startDate\s+"([^"]+)"/);
+    if (dateMatch) occasion.date = dateMatch[1];
+
+    // Extract admin WebID
+    const adminMatch = turtle.match(/seg:adminWebId\s+<([^>]+)>/);
+    if (adminMatch) occasion.adminWebId = adminMatch[1];
+
+    return occasion;
+}
+
+/**
+ * Register a participant for an occasion
+ * POSTs a new file to the registrations container
+ */
+async function registerParticipant(registrationsUrl, participantWebId) {
+    const session = getSolidSession();
+    if (!session || !session.info.isLoggedIn) {
+        throw new Error('Niet ingelogd bij Solid');
+    }
+
+    // Generate unique registration ID
+    const regId = 'reg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+
+    // Extract name from WebID (username part)
+    const name = participantWebId
+        .replace('https://', '')
+        .split('.')[0];
+
+    const registrationTurtle = `@prefix schema: <http://schema.org/> .
+@prefix seg: <https://segersrosseel.be/ns/gift#> .
+
+<#registration> a seg:OccasionRegistration ;
+    seg:participantWebId <${participantWebId}> ;
+    schema:name "${escapeTurtleString(name)}" ;
+    seg:registeredAt "${new Date().toISOString()}" .
+`;
+
+    const registrationUrl = registrationsUrl + regId + '.ttl';
+
+    const response = await session.fetch(registrationUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'text/turtle' },
+        body: registrationTurtle
+    });
+
+    if (!response.ok) {
+        throw new Error(`Registration failed: ${response.status}`);
+    }
+
+    return { registrationUrl };
+}
+
+/**
+ * Fetch all participants from a registrations container
+ */
+async function fetchParticipants(registrationsUrl) {
+    const session = getSolidSession();
+    const fetchFn = session && session.info.isLoggedIn ? session.fetch.bind(session) : fetch;
+
+    // First, get the container listing
+    const response = await fetchFn(registrationsUrl, {
+        headers: { 'Accept': 'text/turtle' }
+    });
+
+    if (!response.ok) {
+        if (response.status === 404) {
+            return []; // No registrations yet
+        }
+        throw new Error(`Could not fetch registrations: ${response.status}`);
+    }
+
+    const turtle = await response.text();
+
+    // Parse container listing to find registration files
+    // LDP containers list contained resources with ldp:contains
+    const containsRegex = /<([^>]+)>\s+a\s+<http:\/\/www\.w3\.org\/ns\/ldp#Resource>/g;
+    const resourceRegex = /ldp:contains\s+<([^>]+)>/g;
+
+    const resources = [];
+    let match;
+
+    // Try ldp:contains pattern
+    while ((match = resourceRegex.exec(turtle)) !== null) {
+        const resourceUrl = match[1];
+        if (resourceUrl.endsWith('.ttl') && !resourceUrl.includes('.placeholder')) {
+            resources.push(resourceUrl.startsWith('http') ? resourceUrl : registrationsUrl + resourceUrl);
+        }
+    }
+
+    // If no ldp:contains found, try to find resources another way
+    if (resources.length === 0) {
+        // Look for any .ttl files mentioned
+        const ttlRegex = /<([^>]*\.ttl)>/g;
+        while ((match = ttlRegex.exec(turtle)) !== null) {
+            const resourceUrl = match[1];
+            if (!resourceUrl.includes('.placeholder') && !resourceUrl.includes('occasion.ttl')) {
+                resources.push(resourceUrl.startsWith('http') ? resourceUrl : registrationsUrl + resourceUrl);
+            }
+        }
+    }
+
+    // Fetch each registration file and extract participant data
+    const participants = [];
+    for (const resourceUrl of resources) {
+        try {
+            const regResponse = await fetchFn(resourceUrl, {
+                headers: { 'Accept': 'text/turtle' }
+            });
+
+            if (regResponse.ok) {
+                const regTurtle = await regResponse.text();
+                const participant = parseRegistrationTurtle(regTurtle);
+                if (participant.webId) {
+                    participants.push(participant);
+                }
+            }
+        } catch (e) {
+            console.warn('Could not fetch registration:', resourceUrl, e);
+        }
+    }
+
+    return participants;
+}
+
+/**
+ * Parse registration Turtle data
+ */
+function parseRegistrationTurtle(turtle) {
+    const registration = {
+        webId: null,
+        name: null,
+        registeredAt: null
+    };
+
+    // Extract WebID
+    const webIdMatch = turtle.match(/seg:participantWebId\s+<([^>]+)>/);
+    if (webIdMatch) registration.webId = webIdMatch[1];
+
+    // Extract name
+    const nameMatch = turtle.match(/schema:name\s+"([^"]+)"/);
+    if (nameMatch) registration.name = nameMatch[1];
+
+    // Extract registration time
+    const timeMatch = turtle.match(/seg:registeredAt\s+"([^"]+)"/);
+    if (timeMatch) registration.registeredAt = timeMatch[1];
+
+    return registration;
+}
+
+// ===========================================
 // EXPOSE FUNCTIONS TO WINDOW (for onclick handlers)
 // ===========================================
 
@@ -764,6 +1070,12 @@ window.saveSolidProfiles = saveSolidProfiles;
 window.getWishlistFromPod = getWishlistFromPod;
 window.isSolidLoggedIn = isSolidLoggedIn;
 window.getCurrentWebId = getCurrentWebId;
+
+// Occasion management
+window.createOccasionInPod = createOccasionInPod;
+window.fetchOccasion = fetchOccasion;
+window.registerParticipant = registerParticipant;
+window.fetchParticipants = fetchParticipants;
 
 // ===========================================
 // INITIALIZATION
