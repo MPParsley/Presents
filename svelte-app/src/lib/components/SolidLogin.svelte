@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { auth, isLoggedIn, webId, isAuthLoading, getShortWebId } from '$lib/stores/auth';
 	import { SOLID_PROVIDERS } from '$lib/solid/constants';
 
@@ -32,7 +33,10 @@
 
 <section class="card">
 	<h2>Solid Account</h2>
-	<p class="info-text">Log in met je Solid Pod om je gegevens op te slaan.</p>
+	<p class="info-text">
+		Log in met je Solid Pod om je gegevens op te slaan.
+		<a href="{base}/help" class="help-link">Hoe werkt dit?</a>
+	</p>
 
 	{#if $isAuthLoading}
 		<p><em>Laden...</em></p>
@@ -117,5 +121,15 @@
 
 	.profile p {
 		margin: 0;
+	}
+
+	.help-link {
+		color: #667eea;
+		text-decoration: none;
+		margin-left: 5px;
+	}
+
+	.help-link:hover {
+		text-decoration: underline;
 	}
 </style>
