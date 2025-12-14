@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { auth } from '$lib/stores/auth';
+	import { auth, isLoggedIn, webId, isAuthLoading, getShortWebId } from '$lib/stores/auth';
 	import { base } from '$app/paths';
 
 	let { children } = $props();
@@ -8,6 +8,19 @@
 	onMount(() => {
 		auth.init();
 	});
+
+	async function handleLogin() {
+		try {
+			await auth.login('https://solidcommunity.net');
+		} catch (error) {
+			console.error('Login error:', error);
+			alert('Fout bij inloggen: ' + (error as Error).message);
+		}
+	}
+
+	async function handleLogout() {
+		await auth.logout();
+	}
 </script>
 
 <svelte:head>
@@ -22,6 +35,16 @@
 			<a href="{base}/">Home</a>
 			<a href="{base}/occasion">Gelegenheden</a>
 			<a href="{base}/reveal">Mijn Wishlist</a>
+			<a href="{base}/help">Help</a>
+			<span class="spacer"></span>
+			{#if $isAuthLoading}
+				<span class="auth-status">Laden...</span>
+			{:else if $isLoggedIn && $webId}
+				<span class="auth-status" title={$webId}>{getShortWebId($webId)}</span>
+				<button onclick={handleLogout}>Uitloggen</button>
+			{:else}
+				<button onclick={handleLogin}>Inloggen</button>
+			{/if}
 		</nav>
 	</header>
 
@@ -80,6 +103,30 @@
 
 	nav a:hover {
 		background: rgba(255, 255, 255, 0.2);
+	}
+
+	nav .spacer {
+		flex: 1;
+	}
+
+	nav .auth-status {
+		color: rgba(255, 255, 255, 0.9);
+		font-size: 0.9rem;
+	}
+
+	nav button {
+		background: rgba(255, 255, 255, 0.2);
+		color: white;
+		border: 1px solid rgba(255, 255, 255, 0.3);
+		padding: 5px 12px;
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 0.9rem;
+		transition: background 0.2s;
+	}
+
+	nav button:hover {
+		background: rgba(255, 255, 255, 0.3);
 	}
 
 	main {
