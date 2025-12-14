@@ -22,6 +22,7 @@
 		<li>Vul je e-mailadres en wachtwoord in</li>
 		<li>Klik op "Register"</li>
 	</ol>
+	<img src="{base}/help/register.png" alt="Account aanmaken scherm" class="screenshot" />
 
 	<h2>Maak een Pod</h2>
 	<ol>
@@ -30,16 +31,18 @@
 		<li>Klik op "Create pod"</li>
 		<li>Je hebt nu een Solid Pod!</li>
 	</ol>
+	<img src="{base}/help/account.png" alt="Pod aanmaken scherm" class="screenshot" />
 
 	<h2>Inloggen in deze app</h2>
 	<ol>
 		<li>Selecteer <strong>"solidcommunity.net"</strong> als provider</li>
 		<li>Klik op <strong>"Inloggen met Solid"</strong></li>
 		<li>Je wordt doorgestuurd naar solidcommunity.net</li>
-		<li>Log daar in met je gebruikersnaam en wachtwoord</li>
-		<li>Geef toestemming aan de app</li>
+		<li>Log daar in met je e-mailadres en wachtwoord</li>
+		<li>Selecteer je WebID en klik op "Authorize"</li>
 		<li>Je bent ingelogd!</li>
 	</ol>
+	<img src="{base}/help/login.png" alt="Autorisatie scherm" class="screenshot" />
 
 	<h2>Deelnemen aan een gelegenheid</h2>
 	<ol>
@@ -120,5 +123,14 @@
 	.back-link:hover {
 		opacity: 0.9;
 		text-decoration: none;
+	}
+
+	.screenshot {
+		display: block;
+		max-width: 100%;
+		margin: 15px 0 25px;
+		border-radius: 8px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+		border: 1px solid #e0e0e0;
 	}
 </style>
