@@ -1,0 +1,615 @@
+/* ===========================================
+   Gift Name Shuffler - Styles
+   Simple, clean CSS for readability
+   =========================================== */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    line-height: 1.6;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 2rem;
+}
+
+header p {
+    margin: 10px 0 0;
+    opacity: 0.9;
+}
+
+/* Card sections */
+.card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.card h2 {
+    margin-top: 0;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 10px;
+    color: #444;
+}
+
+.card h3 {
+    margin-top: 20px;
+    color: #666;
+}
+
+.card.danger {
+    border: 2px solid #e74c3c;
+}
+
+/* Info text */
+.info-text {
+    background: #e3f2fd;
+    border-left: 4px solid #667eea;
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    border-radius: 0 4px 4px 0;
+    color: #444;
+}
+
+/* Checkbox row */
+.checkbox-row label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-weight: normal;
+}
+
+.checkbox-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+/* Advanced settings (collapsible) */
+.advanced-settings {
+    margin-top: 15px;
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+}
+
+.advanced-settings summary {
+    cursor: pointer;
+    font-weight: bold;
+    color: #666;
+    padding: 5px;
+}
+
+.advanced-settings summary:hover {
+    color: #333;
+}
+
+.advanced-settings .help-text {
+    font-size: 0.9rem;
+    color: #666;
+    margin: 10px 0;
+}
+
+.rule-arrow {
+    font-size: 1.2rem;
+    color: #888;
+    font-weight: bold;
+}
+
+.advanced-settings h4 {
+    margin: 15px 0 5px;
+    color: #555;
+    font-size: 0.95rem;
+}
+
+.advanced-settings h4:first-of-type {
+    margin-top: 10px;
+}
+
+#exclusions-list li {
+    background: #fff3cd;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-top: 5px;
+}
+
+#exclusions-list li .exclusion-text {
+    flex: 1;
+}
+
+#inclusions-list li {
+    background: #d4edda;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-top: 5px;
+}
+
+#inclusions-list li .inclusion-text {
+    flex: 1;
+}
+
+/* Form elements */
+.form-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.form-row label {
+    min-width: 80px;
+    font-weight: bold;
+}
+
+input[type="text"],
+select {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    flex: 1;
+    min-width: 150px;
+}
+
+input[type="text"]:focus,
+select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    background-color: #667eea;
+    color: white;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: #5a6fd6;
+}
+
+button.primary-btn {
+    background-color: #27ae60;
+}
+
+button.primary-btn:hover {
+    background-color: #219a52;
+}
+
+button.danger-btn {
+    background-color: #e74c3c;
+}
+
+button.danger-btn:hover {
+    background-color: #c0392b;
+}
+
+button.small-btn {
+    padding: 5px 10px;
+    font-size: 0.85rem;
+}
+
+/* Lists */
+ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+ul li {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+ul li:last-child {
+    border-bottom: none;
+}
+
+ul li .item-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+/* Group tag in person list */
+.group-tag {
+    color: #888;
+    font-weight: normal;
+}
+
+/* Edit form */
+.edit-form {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    width: 100%;
+}
+
+.edit-form input,
+.edit-form select {
+    flex: 1;
+    min-width: 120px;
+}
+
+ul li .item-name {
+    flex: 1;
+}
+
+/* Groups container */
+#groups-container .group-card {
+    background: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+#groups-container .group-card h4 {
+    margin: 0 0 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#groups-container .members-list {
+    margin-top: 10px;
+}
+
+#groups-container .add-member-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+/* Assignments */
+#assignments-list li {
+    background: #e8f5e9;
+    border-radius: 4px;
+    margin-bottom: 5px;
+    padding: 12px 15px;
+}
+
+#assignments-list li .arrow {
+    margin: 0 10px;
+    color: #27ae60;
+    font-weight: bold;
+}
+
+/* Export textarea */
+#export-output {
+    width: 100%;
+    min-height: 200px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    resize: vertical;
+    margin-top: 10px;
+}
+
+/* Editions */
+#editions-container,
+#assignments-container {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+.edition-badge {
+    background: #667eea;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    margin-left: 10px;
+}
+
+.edition-badge.latest {
+    background: #27ae60;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    margin-top: 30px;
+    padding: 20px;
+    color: #888;
+    font-size: 0.9rem;
+}
+
+/* ===========================================
+   SOLID & Wishlist Styles
+   =========================================== */
+
+/* Modal overlay */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    position: sticky;
+    top: 0;
+    background: white;
+    border-radius: 12px 12px 0 0;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #333;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #888;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.modal-close:hover {
+    background: #f0f0f0;
+    color: #333;
+}
+
+/* Solid section */
+#solid-section .info-text a {
+    color: #667eea;
+}
+
+#solid-webid {
+    color: #667eea;
+    word-break: break-all;
+}
+
+/* Wishlist form in modal */
+.wishlist-form {
+    padding: 20px;
+    background: #f9f9f9;
+    border-top: 1px solid #eee;
+}
+
+.wishlist-form h4 {
+    margin: 0 0 15px;
+    color: #555;
+}
+
+.wishlist-form textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.wishlist-form textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+/* Wishlist items in editor */
+#wishlist-items {
+    padding: 20px;
+}
+
+.wishlist-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 15px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.wishlist-item-content {
+    flex: 1;
+}
+
+.wishlist-item-content strong {
+    display: block;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.wishlist-priority {
+    display: inline-block;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+}
+
+.wishlist-description {
+    color: #666;
+    font-size: 0.9rem;
+    margin: 5px 0;
+}
+
+.wishlist-item-content a {
+    color: #667eea;
+    font-size: 0.9rem;
+}
+
+.wishlist-item-actions {
+    display: flex;
+    gap: 5px;
+    flex-shrink: 0;
+    margin-left: 10px;
+}
+
+/* Wishlist viewer (read-only) */
+#wishlist-viewer-content {
+    padding: 20px;
+}
+
+.wishlist-view-item {
+    padding: 15px;
+    background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border-left: 4px solid #27ae60;
+}
+
+.wishlist-item-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+
+.wishlist-view-item strong {
+    color: #333;
+}
+
+.wishlist-link {
+    display: inline-block;
+    margin-top: 8px;
+    color: #667eea;
+    font-size: 0.9rem;
+    text-decoration: none;
+}
+
+.wishlist-link:hover {
+    text-decoration: underline;
+}
+
+/* Solid link badge in persons list */
+.solid-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: #e3f2fd;
+    color: #1976d2;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    margin-left: 8px;
+}
+
+.solid-badge.linked {
+    background: #e8f5e9;
+    color: #27ae60;
+}
+
+/* Wishlist button in assignments */
+.wishlist-btn {
+    margin-left: 10px;
+    padding: 4px 10px;
+    font-size: 0.85rem;
+    background: #e3f2fd;
+    color: #1976d2;
+    border: 1px solid #1976d2;
+}
+
+.wishlist-btn:hover {
+    background: #1976d2;
+    color: white;
+}
+
+/* Link copy button in assignments */
+#assignments-list .small-btn:last-child {
+    background: #f5f5f5;
+    color: #666;
+    border: 1px solid #ddd;
+}
+
+#assignments-list .small-btn:last-child:hover {
+    background: #e0e0e0;
+    color: #333;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .form-row {
+        flex-direction: column;
+    }
+
+    .form-row label {
+        min-width: auto;
+    }
+
+    input[type="text"],
+    select {
+        width: 100%;
+    }
+
+    .form-row > button:not(.small-btn) {
+        width: 100%;
+    }
+
+    /* Keep small buttons inline */
+    .item-buttons {
+        display: flex;
+        gap: 5px;
+        flex-shrink: 0;
+    }
+
+    button.small-btn {
+        width: auto;
+    }
+}
