@@ -19,9 +19,15 @@
 	<h2>Account aanmaken</h2>
 	<ol>
 		<li>Ga naar <a href="https://solidcommunity.net/.account/login/password/register/" target="_blank" rel="noopener">solidcommunity.net registratie</a></li>
-		<li>Kies een gebruikersnaam (dit wordt onderdeel van je WebID)</li>
 		<li>Vul je e-mailadres en wachtwoord in</li>
 		<li>Klik op "Register"</li>
+	</ol>
+
+	<h2>Maak een Pod</h2>
+	<ol>
+		<li>Klik op "Create pod"</li>
+		<li>Vul je naam in (dit wordt onderdeel van je WebID)</li>
+		<li>Klik op "Create pod"</li>
 		<li>Je hebt nu een Solid Pod!</li>
 	</ol>
 
