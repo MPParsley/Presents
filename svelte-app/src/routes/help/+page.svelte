@@ -49,7 +49,7 @@
 		<li>Open de uitnodigingslink die je hebt ontvangen</li>
 		<li>Log in met je Solid account</li>
 		<li>Klik op <strong>"Schrijf me in"</strong></li>
-		<li>Ga naar <a href="{base}/reveal">Wishlist</a> om je verlanglijstje te beheren</li>
+		<li>Ga naar <a href="{base}/wishlist">Wishlist</a> om je verlanglijstje te beheren</li>
 	</ol>
 
 	<h2>Meer informatie</h2>

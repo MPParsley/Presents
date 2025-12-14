@@ -34,7 +34,7 @@
 		<nav>
 			<a href="{base}/">Home</a>
 			<a href="{base}/occasion">Gelegenheden</a>
-			<a href="{base}/reveal">Mijn Wishlist</a>
+			<a href="{base}/wishlist">Mijn Wishlist</a>
 			<a href="{base}/help">Help</a>
 			<span class="spacer"></span>
 			{#if $isAuthLoading}

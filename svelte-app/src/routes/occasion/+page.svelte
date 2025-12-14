@@ -308,7 +308,7 @@
 				<div class="success">
 					<h3>Je bent ingeschreven!</h3>
 					<p>Je neemt deel aan {currentOccasion.name}.</p>
-					<p><a href="{base}/reveal">Beheer je wishlist →</a></p>
+					<p><a href="{base}/wishlist">Beheer je wishlist →</a></p>
 				</div>
 			{:else}
 				<div class="register-section">

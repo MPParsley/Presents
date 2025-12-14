@@ -19,7 +19,7 @@
 		<div class="feature">
 			<h3>Wishlist</h3>
 			<p>Beheer je persoonlijke wishlist. Je data wordt opgeslagen in je eigen Solid Pod.</p>
-			<a href="{base}/reveal" class="btn">Naar Wishlist</a>
+			<a href="{base}/wishlist" class="btn">Naar Wishlist</a>
 		</div>
 	</div>
 </section>
