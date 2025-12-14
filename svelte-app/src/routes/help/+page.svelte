@@ -18,7 +18,7 @@
 
 	<h2>Account aanmaken</h2>
 	<ol>
-		<li>Ga naar <a href="https://solidcommunity.net/register" target="_blank" rel="noopener">solidcommunity.net/register</a></li>
+		<li>Ga naar <a href="https://solidcommunity.net/.account/login/password/register/" target="_blank" rel="noopener">solidcommunity.net registratie</a></li>
 		<li>Kies een gebruikersnaam (dit wordt onderdeel van je WebID)</li>
 		<li>Vul je e-mailadres en wachtwoord in</li>
 		<li>Klik op "Register"</li>
