@@ -482,3 +482,151 @@ export async function getMyRegistrations(): Promise<string[]> {
 		return [];
 	}
 }
+
+export interface Assignment {
+	giverWebId: string;
+	receiverWebId: string;
+	receiverName: string;
+}
+
+/**
+ * Perform a lottery for an occasion
+ * Each participant is assigned to give a gift to another participant (circular)
+ */
+export async function performLottery(
+	occasionUrl: string,
+	participants: Participant[]
+): Promise<Assignment[]> {
+	const session = auth.getSession();
+	if (!session.info.isLoggedIn) {
+		throw new Error('Not logged in');
+	}
+
+	if (participants.length < 2) {
+		throw new Error('Need at least 2 participants for lottery');
+	}
+
+	// Shuffle participants using Fisher-Yates algorithm
+	const shuffled = [...participants];
+	for (let i = shuffled.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+	}
+
+	// Create circular assignments: each person gives to the next in the shuffled list
+	const assignments: Assignment[] = [];
+	for (let i = 0; i < shuffled.length; i++) {
+		const giver = shuffled[i];
+		const receiver = shuffled[(i + 1) % shuffled.length];
+		assignments.push({
+			giverWebId: giver.webId!,
+			receiverWebId: receiver.webId!,
+			receiverName: receiver.name || 'Onbekend'
+		});
+	}
+
+	// Store assignments in occasion folder
+	const assignmentsUrl = occasionUrl.replace('occasion.ttl', 'assignments.ttl');
+	const assignmentsTurtle = generateAssignmentsTurtle(assignments);
+
+	const response = await session.fetch(assignmentsUrl, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'text/turtle' },
+		body: assignmentsTurtle
+	});
+
+	if (!response.ok) {
+		throw new Error(`Could not save assignments: ${response.status}`);
+	}
+
+	return assignments;
+}
+
+function generateAssignmentsTurtle(assignments: Assignment[]): string {
+	let turtle = `@prefix seg: <https://segersrosseel.be/ns/gift#> .
+@prefix schema: <http://schema.org/> .
+
+`;
+	assignments.forEach((a, i) => {
+		turtle += `<#assignment-${i}> a seg:Assignment ;
+    seg:giverWebId <${a.giverWebId}> ;
+    seg:receiverWebId <${a.receiverWebId}> ;
+    schema:name "${escapeTurtleString(a.receiverName)}" .
+
+`;
+	});
+	return turtle;
+}
+
+/**
+ * Fetch assignments for an occasion
+ */
+export async function fetchAssignments(occasionUrl: string): Promise<Assignment[]> {
+	const session = auth.getSession();
+	const fetchFn = session.info.isLoggedIn ? session.fetch.bind(session) : fetch;
+
+	const assignmentsUrl = occasionUrl.replace('occasion.ttl', 'assignments.ttl');
+
+	try {
+		const response = await fetchFn(assignmentsUrl, {
+			headers: { Accept: 'text/turtle' }
+		});
+
+		if (!response.ok) {
+			if (response.status === 404) {
+				return []; // No lottery yet
+			}
+			throw new Error(`HTTP ${response.status}`);
+		}
+
+		const turtle = await response.text();
+		return parseAssignmentsTurtle(turtle);
+	} catch {
+		return [];
+	}
+}
+
+function parseAssignmentsTurtle(turtle: string): Assignment[] {
+	const assignments: Assignment[] = [];
+
+	// Match each assignment block
+	const assignmentRegex = /<#assignment-\d+>[^.]+\./g;
+	const matches = turtle.match(assignmentRegex) || [];
+
+	for (const match of matches) {
+		const giverMatch = match.match(/seg:giverWebId\s+<([^>]+)>/);
+		const receiverMatch = match.match(/seg:receiverWebId\s+<([^>]+)>/);
+		const nameMatch = match.match(/schema:name\s+"([^"]+)"/);
+
+		if (giverMatch && receiverMatch) {
+			assignments.push({
+				giverWebId: giverMatch[1],
+				receiverWebId: receiverMatch[1],
+				receiverName: nameMatch ? nameMatch[1] : 'Onbekend'
+			});
+		}
+	}
+
+	return assignments;
+}
+
+/**
+ * Get the assignment for the current user
+ */
+export async function getMyAssignment(occasionUrl: string): Promise<Assignment | null> {
+	const session = auth.getSession();
+	if (!session.info.isLoggedIn || !session.info.webId) {
+		return null;
+	}
+
+	const assignments = await fetchAssignments(occasionUrl);
+	return assignments.find(a => a.giverWebId === session.info.webId) || null;
+}
+
+/**
+ * Check if lottery has been performed for an occasion
+ */
+export async function hasLottery(occasionUrl: string): Promise<boolean> {
+	const assignments = await fetchAssignments(occasionUrl);
+	return assignments.length > 0;
+}

@@ -15,8 +15,12 @@
 		getMyRegistrations,
 		updateOccasion,
 		deleteOccasion,
+		performLottery,
+		fetchAssignments,
+		getMyAssignment,
 		type Occasion,
-		type Participant
+		type Participant,
+		type Assignment
 	} from '$lib/solid';
 
 	// Derived from URL - no state needed
@@ -33,6 +37,8 @@
 	let myOccasions = $state<Array<{ name: string; url: string }>>([]);
 	let registeredOccasions = $state<Array<{ name: string; url: string }>>([]);
 	let isRegistered = $state(false);
+	let assignments = $state<Assignment[]>([]);
+	let myAssignment = $state<Assignment | null>(null);
 
 	// UI state
 	let isLoading = $state(false);
@@ -86,6 +92,8 @@
 		currentOccasion = null;
 		participants = [];
 		isRegistered = false;
+		assignments = [];
+		myAssignment = null;
 
 		try {
 			currentOccasion = await fetchOccasion(url);
@@ -94,10 +102,14 @@
 				// Always check if current user is registered
 				isRegistered = await checkMyRegistration(url);
 
-				// Admin also gets participants list
+				// Admin also gets participants list and all assignments
 				if ($webId === currentOccasion.adminWebId) {
 					participants = await fetchParticipants(currentOccasion.registrationsUrl);
+					assignments = await fetchAssignments(url);
 				}
+
+				// Everyone gets their own assignment (if lottery has been done)
+				myAssignment = await getMyAssignment(url);
 			}
 		} catch (e) {
 			const errorMessage = (e as Error).message;
@@ -260,8 +272,31 @@
 		}
 	}
 
+	async function handleStartLottery() {
+		if (!occasionUrl || participants.length < 2) return;
+		if (!confirm($t('confirmLottery'))) return;
+
+		isLoading = true;
+		error = null;
+
+		try {
+			assignments = await performLottery(occasionUrl, participants);
+			// Reload to get updated data including own assignment
+			await loadOccasion(occasionUrl);
+		} catch (e) {
+			error = $t('couldNotStartLottery') + ' ' + (e as Error).message;
+		} finally {
+			isLoading = false;
+		}
+	}
+
 	function getShortWebId(id: string): string {
 		return id.replace('https://', '').replace('/profile/card#me', '');
+	}
+
+	function getWishlistUrl(webId: string): string {
+		const podBase = webId.replace('/profile/card#me', '');
+		return `${podBase}/public/presents/wishlist.ttl`;
 	}
 </script>
 
@@ -338,6 +373,27 @@
 				{/if}
 			</div>
 
+			<div class="lottery-section">
+				<h3>{$t('lottery')}</h3>
+				{#if assignments.length > 0}
+					<p class="lottery-done">{$t('lotteryDone')}</p>
+					<ul class="assignment-list">
+						{#each assignments as a}
+							<li>
+								<span class="giver">{getShortWebId(a.giverWebId)}</span>
+								<span class="arrow">→</span>
+								<span class="receiver">{a.receiverName}</span>
+							</li>
+						{/each}
+					</ul>
+				{:else if participants.length >= 2}
+					<p>{$t('lotteryReady')}</p>
+					<button class="primary" onclick={handleStartLottery}>{$t('startLottery')}</button>
+				{:else}
+					<p><em>{$t('lotteryNeedMore')}</em></p>
+				{/if}
+			</div>
+
 			<div class="share-section">
 				<h4>{$t('inviteLink')}</h4>
 				<p>{$t('shareLink')}</p>
@@ -350,6 +406,19 @@
 					<p>{$t('participatingIn')} {currentOccasion.name}.</p>
 					<p><a href="{base}/wishlist">{$t('manageWishlist')}</a></p>
 				</div>
+
+				{#if myAssignment}
+					<div class="assignment-card">
+						<h3>{$t('yourAssignment')}</h3>
+						<p class="assignment-name">{myAssignment.receiverName}</p>
+						<p>{$t('viewTheirWishlist')}</p>
+						<a href="{base}/wishlist?view={encodeURIComponent(myAssignment.receiverWebId)}" class="btn primary">{$t('viewWishlist')}</a>
+					</div>
+				{:else}
+					<div class="waiting-lottery">
+						<p><em>{$t('waitingForLottery')}</em></p>
+					</div>
+				{/if}
 			{:else}
 				<div class="register-section">
 					<p>{$t('registerForOccasion')}</p>
@@ -614,5 +683,84 @@
 		display: flex;
 		gap: 10px;
 		margin-top: 10px;
+	}
+
+	.lottery-section {
+		background: #e8f4fd;
+		border: 1px solid #bee5eb;
+		border-radius: 8px;
+		padding: 15px;
+		margin-top: 20px;
+	}
+
+	.lottery-section h3 {
+		margin-top: 0;
+		color: #0c5460;
+	}
+
+	.lottery-done {
+		color: #155724;
+		font-weight: 500;
+	}
+
+	.assignment-list {
+		list-style: none;
+		padding: 0;
+		margin: 10px 0 0;
+	}
+
+	.assignment-list li {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 8px 12px;
+		background: white;
+		border-radius: 6px;
+		margin-bottom: 6px;
+	}
+
+	.assignment-list .giver {
+		font-weight: 500;
+		color: #333;
+	}
+
+	.assignment-list .arrow {
+		color: #667eea;
+	}
+
+	.assignment-list .receiver {
+		color: #155724;
+		font-weight: 500;
+	}
+
+	.assignment-card {
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		color: white;
+		border-radius: 12px;
+		padding: 20px;
+		text-align: center;
+		margin-top: 20px;
+	}
+
+	.assignment-card h3 {
+		margin-top: 0;
+		color: white;
+	}
+
+	.assignment-card .assignment-name {
+		font-size: 1.5rem;
+		font-weight: bold;
+		margin: 15px 0;
+	}
+
+	.assignment-card .btn {
+		display: inline-block;
+		margin-top: 10px;
+	}
+
+	.waiting-lottery {
+		text-align: center;
+		padding: 15px;
+		color: #666;
 	}
 </style>

@@ -75,6 +75,19 @@ const translations = {
 		couldNotDelete: 'Kon gelegenheid niet verwijderen:',
 		couldNotRegister: 'Kon niet inschrijven:',
 
+		// Lottery
+		lottery: 'Loting',
+		startLottery: 'Start Loting',
+		confirmLottery: 'Weet je zeker dat je de loting wilt starten? Dit kan niet ongedaan worden gemaakt.',
+		lotteryDone: 'De loting is uitgevoerd!',
+		lotteryReady: 'Er zijn genoeg deelnemers om de loting te starten.',
+		lotteryNeedMore: 'Minimaal 2 deelnemers nodig voor de loting.',
+		couldNotStartLottery: 'Kon loting niet starten:',
+		yourAssignment: 'Jouw loting',
+		viewTheirWishlist: 'Bekijk de wishlist van deze persoon:',
+		viewWishlist: 'Bekijk Wishlist',
+		waitingForLottery: 'De organisator heeft de loting nog niet gestart.',
+
 		// Wishlist
 		myWishlistTitle: 'Mijn Wishlist',
 		wishlistInfo: 'Beheer hier je verlanglijstje. Je items worden opgeslagen in je Solid Pod.',
@@ -209,6 +222,19 @@ const translations = {
 		couldNotUpdate: 'Could not update occasion:',
 		couldNotDelete: 'Could not delete occasion:',
 		couldNotRegister: 'Could not register:',
+
+		// Lottery
+		lottery: 'Lottery',
+		startLottery: 'Start Lottery',
+		confirmLottery: 'Are you sure you want to start the lottery? This cannot be undone.',
+		lotteryDone: 'The lottery has been completed!',
+		lotteryReady: 'There are enough participants to start the lottery.',
+		lotteryNeedMore: 'At least 2 participants needed for the lottery.',
+		couldNotStartLottery: 'Could not start lottery:',
+		yourAssignment: 'Your assignment',
+		viewTheirWishlist: 'View the wishlist of this person:',
+		viewWishlist: 'View Wishlist',
+		waitingForLottery: 'The organizer has not started the lottery yet.',
 
 		// Wishlist
 		myWishlistTitle: 'My Wishlist',
