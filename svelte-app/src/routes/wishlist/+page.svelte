@@ -1,8 +1,15 @@
 <script lang="ts">
+	import { page } from '$app/stores';
 	import { isLoggedIn, webId, isAuthLoading } from '$lib/stores/auth';
 	import SolidLogin from '$lib/components/SolidLogin.svelte';
 	import { getWishlist, saveWishlist, type WishlistItem, generateId } from '$lib/solid';
 	import { t } from '$lib/i18n';
+
+	// Check if viewing someone else's wishlist
+	let viewingWebId = $derived($page.url.searchParams.get('view'));
+	let isViewingOther = $derived(!!viewingWebId);
+	let targetWebId = $derived(viewingWebId || $webId);
+	let viewingName = $derived(viewingWebId ? viewingWebId.replace('https://', '').split('.')[0] : null);
 
 	// State
 	let wishlistItems = $state<WishlistItem[]>([]);
@@ -15,21 +22,25 @@
 	let newItemUrl = $state('');
 	let newItemPriority = $state(3);
 
-	// Load wishlist when logged in
+	// Load wishlist when logged in or when viewing someone else's
 	$effect(() => {
-		if ($isLoggedIn && $webId && !$isAuthLoading) {
-			loadWishlist();
+		if (!$isAuthLoading) {
+			if (viewingWebId) {
+				// Viewing someone else's wishlist - can be done while logged in
+				loadWishlist(viewingWebId);
+			} else if ($isLoggedIn && $webId) {
+				// Own wishlist
+				loadWishlist($webId);
+			}
 		}
 	});
 
-	async function loadWishlist() {
-		if (!$webId) return;
-
+	async function loadWishlist(targetId: string) {
 		isLoading = true;
 		error = null;
 
 		try {
-			wishlistItems = await getWishlist($webId);
+			wishlistItems = await getWishlist(targetId);
 		} catch (e) {
 			error = $t('couldNotLoadWishlist') + ' ' + (e as Error).message;
 		} finally {
@@ -102,11 +113,42 @@
 	}
 </script>
 
-{#if !$isLoggedIn}
-	<SolidLogin message={$t('loginToManageWishlist')} />
-{:else if isLoading}
+{#if isLoading}
 	<div class="loading">{$t('wishlistLoading')}</div>
+{:else if isViewingOther}
+	<!-- Viewing someone else's wishlist (read-only) -->
+	{#if error}
+		<div class="error">{error}</div>
+	{/if}
+
+	<section class="card">
+		<h2>{$t('wishlistOf')} {viewingName}</h2>
+
+		{#if wishlistItems.length === 0}
+			<p><em>{$t('wishlistEmptyOther')}</em></p>
+		{:else}
+			<ul class="wishlist readonly">
+				{#each wishlistItems as item}
+					<li>
+						<div class="item-content">
+							<span class="priority">{'⭐'.repeat(item.priority)}</span>
+							<strong>{item.name}</strong>
+							{#if item.description}
+								<p class="description">{item.description}</p>
+							{/if}
+							{#if item.url}
+								<a href={item.url} target="_blank" rel="noopener">{$t('linkArrow')}</a>
+							{/if}
+						</div>
+					</li>
+				{/each}
+			</ul>
+		{/if}
+	</section>
+{:else if !$isLoggedIn}
+	<SolidLogin message={$t('loginToManageWishlist')} />
 {:else}
+	<!-- Own wishlist (editable) -->
 	{#if error}
 		<div class="error">{error}</div>
 	{/if}
