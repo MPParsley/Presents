@@ -539,7 +539,71 @@ export async function performLottery(
 		throw new Error(`Could not save assignments: ${response.status}`);
 	}
 
+	// Store individual assignment files for each participant (they can only read their own)
+	const baseUrl = occasionUrl.replace('occasion.ttl', '');
+	for (const assignment of assignments) {
+		await storeIndividualAssignment(baseUrl, assignment, session.info.webId!);
+	}
+
 	return assignments;
+}
+
+/**
+ * Store an individual assignment file that only the giver can read
+ */
+async function storeIndividualAssignment(
+	baseUrl: string,
+	assignment: Assignment,
+	ownerWebId: string
+): Promise<void> {
+	const session = auth.getSession();
+
+	// Create a filename based on giver's webId (use hash to make it URL-safe)
+	const giverHash = btoa(assignment.giverWebId).replace(/[/+=]/g, '_').substring(0, 20);
+	const assignmentUrl = `${baseUrl}assignment-${giverHash}.ttl`;
+
+	const turtle = `@prefix seg: <https://segersrosseel.be/ns/gift#> .
+@prefix schema: <http://schema.org/> .
+
+<#assignment> a seg:Assignment ;
+    seg:giverWebId <${assignment.giverWebId}> ;
+    seg:receiverWebId <${assignment.receiverWebId}> ;
+    schema:name "${escapeTurtleString(assignment.receiverName)}" .
+`;
+
+	const response = await session.fetch(assignmentUrl, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'text/turtle' },
+		body: turtle
+	});
+
+	if (!response.ok) {
+		console.warn('Could not save individual assignment:', response.status);
+		return;
+	}
+
+	// Set ACL: only owner and the giver can read this file
+	const aclUrl = assignmentUrl + '.acl';
+	const aclTurtle = `@prefix acl: <http://www.w3.org/ns/auth/acl#> .
+
+<#owner>
+    a acl:Authorization ;
+    acl:agent <${ownerWebId}> ;
+    acl:accessTo <./assignment-${giverHash}.ttl> ;
+    acl:mode acl:Read, acl:Write, acl:Control .
+
+<#giver>
+    a acl:Authorization ;
+    acl:agent <${assignment.giverWebId}> ;
+    acl:accessTo <./assignment-${giverHash}.ttl> ;
+    acl:mode acl:Read .
+`;
+
+	await session.fetch(aclUrl, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'text/turtle' },
+		body: aclTurtle
+	});
 }
 
 function generateAssignmentsTurtle(assignments: Assignment[]): string {
@@ -611,7 +675,7 @@ function parseAssignmentsTurtle(turtle: string): Assignment[] {
 }
 
 /**
- * Get the assignment for the current user
+ * Get the assignment for the current user by reading their individual assignment file
  */
 export async function getMyAssignment(occasionUrl: string): Promise<Assignment | null> {
 	const session = auth.getSession();
@@ -619,14 +683,57 @@ export async function getMyAssignment(occasionUrl: string): Promise<Assignment |
 		return null;
 	}
 
-	const assignments = await fetchAssignments(occasionUrl);
-	return assignments.find(a => a.giverWebId === session.info.webId) || null;
+	// Try to read the individual assignment file for this user
+	const baseUrl = occasionUrl.replace('occasion.ttl', '');
+	const giverHash = btoa(session.info.webId).replace(/[/+=]/g, '_').substring(0, 20);
+	const assignmentUrl = `${baseUrl}assignment-${giverHash}.ttl`;
+
+	try {
+		const response = await session.fetch(assignmentUrl, {
+			headers: { Accept: 'text/turtle' }
+		});
+
+		if (!response.ok) {
+			if (response.status === 404 || response.status === 403) {
+				return null; // No assignment for this user or no lottery yet
+			}
+			return null;
+		}
+
+		const turtle = await response.text();
+
+		// Parse the single assignment
+		const giverMatch = turtle.match(/seg:giverWebId\s+<([^>]+)>/);
+		const receiverMatch = turtle.match(/seg:receiverWebId\s+<([^>]+)>/);
+		const nameMatch = turtle.match(/schema:name\s+"([^"]+)"/);
+
+		if (giverMatch && receiverMatch) {
+			return {
+				giverWebId: giverMatch[1],
+				receiverWebId: receiverMatch[1],
+				receiverName: nameMatch ? nameMatch[1] : 'Onbekend'
+			};
+		}
+
+		return null;
+	} catch {
+		return null;
+	}
 }
 
 /**
  * Check if lottery has been performed for an occasion
+ * For participants: checks their individual assignment file
+ * For admin: checks the main assignments.ttl file
  */
 export async function hasLottery(occasionUrl: string): Promise<boolean> {
+	// First check if current user has an assignment (works for participants)
+	const myAssignment = await getMyAssignment(occasionUrl);
+	if (myAssignment) {
+		return true;
+	}
+
+	// Fall back to checking assignments.ttl (works for admin)
 	const assignments = await fetchAssignments(occasionUrl);
 	return assignments.length > 0;
 }
