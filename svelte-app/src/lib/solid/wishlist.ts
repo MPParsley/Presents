@@ -75,8 +75,12 @@ export async function saveWishlist(items: WishlistItem[]): Promise<void> {
 /**
  * Set ACL on current user's wishlist to restrict access
  * @param allowedReaders - WebIDs of users who can read the wishlist (besides owner)
+ * @param allowAuthenticated - If true, allow all authenticated Solid users to read (recommended for lottery)
  */
-export async function setWishlistACL(allowedReaders: string[]): Promise<void> {
+export async function setWishlistACL(
+	allowedReaders: string[],
+	allowAuthenticated: boolean = false
+): Promise<void> {
 	const session = auth.getSession();
 	if (!session.info.isLoggedIn || !session.info.webId) {
 		throw new Error('Not logged in');
@@ -85,7 +89,7 @@ export async function setWishlistACL(allowedReaders: string[]): Promise<void> {
 	const wishlistUrl = getPodBaseUrl(session.info.webId) + WISHLIST_PATH;
 	const aclUrl = wishlistUrl + '.acl';
 
-	// Build ACL entries for allowed readers
+	// Build ACL entries for specific allowed readers
 	let readerEntries = '';
 	allowedReaders.forEach((webId, index) => {
 		readerEntries += `
@@ -96,6 +100,17 @@ export async function setWishlistACL(allowedReaders: string[]): Promise<void> {
     acl:mode acl:Read .
 `;
 	});
+
+	// If allowing all authenticated users, add that entry
+	if (allowAuthenticated) {
+		readerEntries += `
+<#authenticated>
+    a acl:Authorization ;
+    acl:agentClass acl:AuthenticatedAgent ;
+    acl:accessTo <./wishlist.ttl> ;
+    acl:mode acl:Read .
+`;
+	}
 
 	const aclTurtle = `@prefix acl: <http://www.w3.org/ns/auth/acl#> .
 
