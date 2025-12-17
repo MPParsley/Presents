@@ -90,7 +90,9 @@
 	nav {
 		display: flex;
 		justify-content: center;
-		gap: 20px;
+		align-items: center;
+		gap: 10px;
+		flex-wrap: wrap;
 	}
 
 	nav a {
@@ -106,7 +108,7 @@
 	}
 
 	nav .spacer {
-		flex: 1;
+		display: none;
 	}
 
 	nav .auth-status {
@@ -127,6 +129,17 @@
 
 	nav button:hover {
 		background: rgba(255, 255, 255, 0.3);
+	}
+
+	@media (min-width: 768px) {
+		nav {
+			gap: 20px;
+		}
+
+		nav .spacer {
+			display: block;
+			flex: 1;
+		}
 	}
 
 	main {
