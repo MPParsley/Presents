@@ -83,11 +83,15 @@ async function setPublicWriteACL(containerUrl: string, ownerWebId: string): Prom
     acl:mode acl:Read, acl:Append .
 `;
 
-	await session.fetch(aclUrl, {
+	const response = await session.fetch(aclUrl, {
 		method: 'PUT',
 		headers: { 'Content-Type': 'text/turtle' },
 		body: aclTurtle
 	});
+
+	if (!response.ok) {
+		console.warn('Could not set ACL:', response.status, await response.text().catch(() => ''));
+	}
 }
 
 /**
@@ -264,17 +268,23 @@ export async function registerParticipant(
     seg:registeredAt "${new Date().toISOString()}" .
 `;
 
-	const registrationUrl = registrationsUrl + regId + '.ttl';
-
-	const response = await session.fetch(registrationUrl, {
-		method: 'PUT',
-		headers: { 'Content-Type': 'text/turtle' },
+	// Use POST to append to container (works with acl:Append permission)
+	const response = await session.fetch(registrationsUrl, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'text/turtle',
+			'Slug': regId + '.ttl'
+		},
 		body: registrationTurtle
 	});
 
 	if (!response.ok) {
-		throw new Error(`Registration failed: ${response.status}`);
+		const errorText = await response.text().catch(() => '');
+		throw new Error(`Registration failed: ${response.status} ${errorText}`);
 	}
+
+	// Get the actual URL from Location header, or construct it
+	const registrationUrl = response.headers.get('Location') || (registrationsUrl + regId + '.ttl');
 
 	return { registrationUrl };
 }
