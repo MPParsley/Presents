@@ -2,7 +2,7 @@
 	import { page } from '$app/stores';
 	import { isLoggedIn, webId, isAuthLoading } from '$lib/stores/auth';
 	import SolidLogin from '$lib/components/SolidLogin.svelte';
-	import { getWishlist, saveWishlist, type WishlistItem, generateId } from '$lib/solid';
+	import { getWishlist, saveWishlist, setWishlistACL, type WishlistItem, generateId } from '$lib/solid';
 	import { t } from '$lib/i18n';
 
 	// Check if viewing someone else's wishlist
@@ -15,6 +15,7 @@
 	let wishlistItems = $state<WishlistItem[]>([]);
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
+	let securityMessage = $state<string | null>(null);
 
 	// Form state
 	let newItemName = $state('');
@@ -45,6 +46,17 @@
 			error = $t('couldNotLoadWishlist') + ' ' + (e as Error).message;
 		} finally {
 			isLoading = false;
+		}
+	}
+
+	async function secureWishlist() {
+		securityMessage = null;
+		try {
+			// Set ACL to owner-only (removes public access)
+			await setWishlistACL([], false);
+			securityMessage = $t('wishlistSecured');
+		} catch (e) {
+			error = $t('couldNotSecure') + ' ' + (e as Error).message;
 		}
 	}
 
@@ -153,8 +165,16 @@
 		<div class="error">{error}</div>
 	{/if}
 
+	{#if securityMessage}
+		<div class="success">{securityMessage}</div>
+	{/if}
+
 	<section class="card">
 		<h2>{$t('myWishlistTitle')}</h2>
+		<div class="security-section">
+			<button onclick={secureWishlist}>{$t('secureWishlist')}</button>
+			<span class="security-hint">{$t('secureWishlistHint')}</span>
+		</div>
 
 		{#if wishlistItems.length === 0}
 			<p><em>{$t('wishlistEmpty')}</em></p>
@@ -344,5 +364,44 @@
 
 	button.primary:hover {
 		opacity: 0.9;
+	}
+
+	.security-section {
+		display: flex;
+		align-items: center;
+		gap: 15px;
+		padding: 15px;
+		background: #fff3cd;
+		border: 1px solid #ffc107;
+		border-radius: 8px;
+		margin-bottom: 20px;
+	}
+
+	.security-section button {
+		padding: 8px 16px;
+		background: #667eea;
+		color: white;
+		border: none;
+		border-radius: 6px;
+		cursor: pointer;
+		white-space: nowrap;
+	}
+
+	.security-section button:hover {
+		opacity: 0.9;
+	}
+
+	.security-hint {
+		color: #856404;
+		font-size: 0.9rem;
+	}
+
+	.success {
+		background: #d4edda;
+		border: 1px solid #c3e6cb;
+		color: #155724;
+		padding: 15px;
+		border-radius: 8px;
+		margin-bottom: 20px;
 	}
 </style>

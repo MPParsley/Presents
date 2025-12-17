@@ -123,6 +123,10 @@ const translations = {
 		couldNotLoadWishlist: 'Kon wishlist niet laden:',
 		couldNotSave: 'Kon niet opslaan:',
 		couldNotRemove: 'Kon item niet verwijderen:',
+		secureWishlist: 'Beveilig Wishlist',
+		secureWishlistHint: 'Verwijder publieke toegang (alleen jij en uitgenodigde deelnemers)',
+		wishlistSecured: 'Wishlist is nu beveiligd! Alleen jij en geautoriseerde gebruikers hebben toegang.',
+		couldNotSecure: 'Kon wishlist niet beveiligen:',
 
 		// Help page
 		howDoesItWork: 'Hoe werkt het?',
@@ -273,6 +277,10 @@ const translations = {
 		couldNotLoadWishlist: 'Could not load wishlist:',
 		couldNotSave: 'Could not save:',
 		couldNotRemove: 'Could not remove item:',
+		secureWishlist: 'Secure Wishlist',
+		secureWishlistHint: 'Remove public access (only you and invited participants)',
+		wishlistSecured: 'Wishlist is now secured! Only you and authorized users have access.',
+		couldNotSecure: 'Could not secure wishlist:',
 
 		// Help page
 		howDoesItWork: 'How does it work?',
