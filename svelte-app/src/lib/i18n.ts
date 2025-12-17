@@ -37,6 +37,7 @@ const translations = {
 
 		// Occasions
 		myOccasions: 'Mijn Gelegenheden',
+		registeredOccasions: 'Ingeschreven Gelegenheden',
 		view: 'Bekijk',
 		createNewOccasion: 'Nieuwe Gelegenheid Aanmaken',
 		name: 'Naam',
@@ -61,6 +62,7 @@ const translations = {
 		participatingIn: 'Je neemt deel aan',
 		manageWishlist: 'Beheer je wishlist →',
 		registerForOccasion: 'Schrijf je in voor deze gelegenheid zodat anderen je wishlist kunnen zien.',
+		registerAsAdmin: 'Schrijf jezelf ook in om deel te nemen aan je eigen gelegenheid.',
 		register: 'Schrijf me in',
 		loginToRegister: 'Log in om je in te schrijven voor deze gelegenheid.',
 		confirmDelete: 'Weet je zeker dat je deze gelegenheid wilt verwijderen? Dit kan niet ongedaan worden gemaakt.',
@@ -170,6 +172,7 @@ const translations = {
 
 		// Occasions
 		myOccasions: 'My Occasions',
+		registeredOccasions: 'Registered Occasions',
 		view: 'View',
 		createNewOccasion: 'Create New Occasion',
 		name: 'Name',
@@ -194,6 +197,7 @@ const translations = {
 		participatingIn: 'You are participating in',
 		manageWishlist: 'Manage your wishlist →',
 		registerForOccasion: 'Register for this occasion so others can see your wishlist.',
+		registerAsAdmin: 'Register yourself to participate in your own occasion.',
 		register: 'Register',
 		loginToRegister: 'Log in to register for this occasion.',
 		confirmDelete: 'Are you sure you want to delete this occasion? This cannot be undone.',

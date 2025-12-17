@@ -12,6 +12,7 @@
 		registerParticipant,
 		fetchParticipants,
 		checkMyRegistration,
+		getMyRegistrations,
 		updateOccasion,
 		deleteOccasion,
 		type Occasion,
@@ -30,6 +31,7 @@
 	let currentOccasion = $state<Occasion | null>(null);
 	let participants = $state<Participant[]>([]);
 	let myOccasions = $state<Array<{ name: string; url: string }>>([]);
+	let registeredOccasions = $state<Array<{ name: string; url: string }>>([]);
 	let isRegistered = $state(false);
 
 	// UI state
@@ -70,10 +72,11 @@
 		}
 	});
 
-	// Load my occasions when logged in and no occasion selected
+	// Load my occasions and registered occasions when logged in and no occasion selected
 	$effect(() => {
 		if ($isLoggedIn && $webId && !occasionUrl && !$isAuthLoading) {
 			loadMyOccasions();
+			loadRegisteredOccasions();
 		}
 	});
 
@@ -87,10 +90,14 @@
 		try {
 			currentOccasion = await fetchOccasion(url);
 
-			if ($webId === currentOccasion.adminWebId) {
-				participants = await fetchParticipants(currentOccasion.registrationsUrl);
-			} else if ($webId) {
+			if ($webId) {
+				// Always check if current user is registered
 				isRegistered = await checkMyRegistration(url);
+
+				// Admin also gets participants list
+				if ($webId === currentOccasion.adminWebId) {
+					participants = await fetchParticipants(currentOccasion.registrationsUrl);
+				}
 			}
 		} catch (e) {
 			const errorMessage = (e as Error).message;
@@ -111,6 +118,26 @@
 			myOccasions = await fetchMyOccasions($webId);
 		} catch (e) {
 			console.warn('Could not load occasions:', e);
+		}
+	}
+
+	async function loadRegisteredOccasions() {
+		try {
+			const occasionUrls = await getMyRegistrations();
+			const occasions: Array<{ name: string; url: string }> = [];
+
+			for (const url of occasionUrls) {
+				try {
+					const occasion = await fetchOccasion(url);
+					occasions.push({ name: occasion.name, url });
+				} catch {
+					// Occasion might have been deleted, skip it
+				}
+			}
+
+			registeredOccasions = occasions;
+		} catch (e) {
+			console.warn('Could not load registered occasions:', e);
 		}
 	}
 
@@ -238,9 +265,11 @@
 	}
 </script>
 
-<SolidLogin />
-
-{#if isLoading}
+{#if $isAuthLoading}
+	<div class="loading">{$t('loading')}</div>
+{:else if !$isLoggedIn}
+	<SolidLogin message={occasionUrl ? $t('loginToRegister') : $t('loginToCreate')} />
+{:else if isLoading}
 	<div class="loading">{$t('loading')}</div>
 {:else if error}
 	<div class="error">{error}</div>
@@ -282,6 +311,19 @@
 				<button class="danger" onclick={handleDelete}>🗑️ {$t('delete')}</button>
 			</div>
 
+			{#if isRegistered}
+				<div class="success">
+					<h3>{$t('youAreRegistered')}</h3>
+					<p>{$t('participatingIn')} {currentOccasion.name}.</p>
+					<p><a href="{base}/wishlist">{$t('manageWishlist')}</a></p>
+				</div>
+			{:else}
+				<div class="register-section">
+					<p>{$t('registerAsAdmin')}</p>
+					<button class="primary" onclick={handleRegister}>{$t('register')}</button>
+				</div>
+			{/if}
+
 			<div class="participants-section">
 				<h3>{$t('registeredParticipants')} ({participants.length})</h3>
 				{#if participants.length === 0}
@@ -303,7 +345,7 @@
 				<p>{$t('shareLink')}</p>
 				<button onclick={copyShareLink}>{$t('copyLink')}</button>
 			</div>
-		{:else if $isLoggedIn && !isEditing}
+		{:else if !isEditing}
 			{#if isRegistered}
 				<div class="success">
 					<h3>{$t('youAreRegistered')}</h3>
@@ -316,16 +358,28 @@
 					<button class="primary" onclick={handleRegister}>{$t('register')}</button>
 				</div>
 			{/if}
-		{:else}
-			<p>{$t('loginToRegister')}</p>
 		{/if}
 	</section>
-{:else if $isLoggedIn}
+{:else}
 	{#if myOccasions.length > 0}
 		<section class="card">
 			<h2>{$t('myOccasions')}</h2>
 			<ul class="occasion-list">
 				{#each myOccasions as occ}
+					<li>
+						<span>{occ.name}</span>
+						<a href="{base}/occasion?occasion={encodeURIComponent(occ.url)}" class="btn">{$t('view')}</a>
+					</li>
+				{/each}
+			</ul>
+		</section>
+	{/if}
+
+	{#if registeredOccasions.length > 0}
+		<section class="card">
+			<h2>{$t('registeredOccasions')}</h2>
+			<ul class="occasion-list">
+				{#each registeredOccasions as occ}
 					<li>
 						<span>{occ.name}</span>
 						<a href="{base}/occasion?occasion={encodeURIComponent(occ.url)}" class="btn">{$t('view')}</a>
@@ -348,10 +402,6 @@
 			</label>
 			<button class="primary" onclick={handleCreateOccasion}>{$t('create')}</button>
 		</div>
-	</section>
-{:else}
-	<section class="card">
-		<p>{$t('loginToCreate')}</p>
 	</section>
 {/if}
 

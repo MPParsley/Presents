@@ -200,43 +200,49 @@ export async function fetchMyOccasions(
 	const podBase = getPodBaseUrl(webId);
 	const occasionsContainerUrl = `${podBase}${OCCASIONS_PATH}/`;
 
-	const response = await fetchFn(occasionsContainerUrl, {
-		headers: { Accept: 'text/turtle' }
-	});
+	try {
+		const response = await fetchFn(occasionsContainerUrl, {
+			headers: { Accept: 'text/turtle' }
+		});
 
-	if (!response.ok) {
-		if (response.status === 404) {
-			return [];
+		if (!response.ok) {
+			// 404 means folder doesn't exist yet - return empty array
+			if (response.status === 404 || response.status === 403) {
+				return [];
+			}
+			throw new Error(`HTTP ${response.status}`);
 		}
-		throw new Error(`HTTP ${response.status}`);
-	}
 
-	const turtle = await response.text();
-	const occasions: Array<{ name: string; url: string }> = [];
+		const turtle = await response.text();
+		const occasions: Array<{ name: string; url: string }> = [];
 
-	// Parse ldp:contains with comma-separated values
-	const containsRegex = /ldp:contains\s+([^;.]+)/g;
-	let containsMatch;
+		// Parse ldp:contains with comma-separated values
+		const containsRegex = /ldp:contains\s+([^;.]+)/g;
+		let containsMatch;
 
-	while ((containsMatch = containsRegex.exec(turtle)) !== null) {
-		const containsSection = containsMatch[1];
-		const urlRegex = /<([^>]+)>/g;
-		let urlMatch;
+		while ((containsMatch = containsRegex.exec(turtle)) !== null) {
+			const containsSection = containsMatch[1];
+			const urlRegex = /<([^>]+)>/g;
+			let urlMatch;
 
-		while ((urlMatch = urlRegex.exec(containsSection)) !== null) {
-			const itemUrl = urlMatch[1];
-			if (itemUrl.endsWith('/')) {
-				const fullUrl = itemUrl.startsWith('http') ? itemUrl : occasionsContainerUrl + itemUrl;
-				const name = itemUrl.replace(/\/$/, '').split('/').pop() || '';
-				occasions.push({
-					name,
-					url: fullUrl + 'occasion.ttl'
-				});
+			while ((urlMatch = urlRegex.exec(containsSection)) !== null) {
+				const itemUrl = urlMatch[1];
+				if (itemUrl.endsWith('/')) {
+					const fullUrl = itemUrl.startsWith('http') ? itemUrl : occasionsContainerUrl + itemUrl;
+					const name = itemUrl.replace(/\/$/, '').split('/').pop() || '';
+					occasions.push({
+						name,
+						url: fullUrl + 'occasion.ttl'
+					});
+				}
 			}
 		}
-	}
 
-	return occasions;
+		return occasions;
+	} catch {
+		// Network error or other issue - return empty array
+		return [];
+	}
 }
 
 /**
@@ -464,8 +470,8 @@ export async function getMyRegistrations(): Promise<string[]> {
 		const turtle = await response.text();
 		const occasionUrls: string[] = [];
 
-		// Parse occasion URLs from the turtle
-		const regex = /seg:occasionUrl\s+<([^>]+)>/g;
+		// Parse occasion URLs from the turtle (matches both prefixed and full URI form)
+		const regex = /<https:\/\/segersrosseel\.be\/ns\/gift#occasionUrl>\s+<([^>]+)>/g;
 		let match;
 		while ((match = regex.exec(turtle)) !== null) {
 			occasionUrls.push(match[1]);
