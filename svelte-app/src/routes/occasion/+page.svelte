@@ -40,16 +40,22 @@
 	// Capture occasion URL from query params (stored in sessionStorage for OIDC redirects)
 	onMount(() => {
 		const urlParam = $page.url.searchParams.get('occasion');
+		const isOidcRedirect = $page.url.searchParams.has('code');
+
 		if (urlParam) {
+			// Direct link to occasion - use and store it
 			sessionStorage.setItem('current_occasion_url', urlParam);
 			occasionUrl = urlParam;
-		} else {
+		} else if (isOidcRedirect) {
+			// OIDC redirect - restore from sessionStorage if available
 			const stored = sessionStorage.getItem('current_occasion_url');
-			if (stored && !$page.url.searchParams.has('code')) {
+			if (stored) {
 				occasionUrl = stored;
-			} else if (!$page.url.searchParams.has('code')) {
-				sessionStorage.removeItem('current_occasion_url');
 			}
+		} else {
+			// Normal navigation to /occasion - clear storage and show overview
+			sessionStorage.removeItem('current_occasion_url');
+			occasionUrl = null;
 		}
 	});
 
