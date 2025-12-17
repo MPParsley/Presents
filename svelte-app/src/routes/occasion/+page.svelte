@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
@@ -37,8 +36,8 @@
 	let editName = $state('');
 	let editDate = $state('');
 
-	// Capture occasion URL from query params (stored in sessionStorage for OIDC redirects)
-	onMount(() => {
+	// Watch URL params reactively (handles both initial load and navigation within page)
+	$effect(() => {
 		const urlParam = $page.url.searchParams.get('occasion');
 		const isOidcRedirect = $page.url.searchParams.has('code');
 
@@ -56,6 +55,7 @@
 			// Normal navigation to /occasion - clear storage and show overview
 			sessionStorage.removeItem('current_occasion_url');
 			occasionUrl = null;
+			currentOccasion = null;
 		}
 	});
 
