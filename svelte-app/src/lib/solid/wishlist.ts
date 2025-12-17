@@ -70,6 +70,50 @@ export async function saveWishlist(items: WishlistItem[]): Promise<void> {
 
 	// Update cache
 	cacheWishlist(session.info.webId, items);
+
+	// Ensure ACL exists to override public folder default
+	// Default: only owner can access (until added to an occasion with lottery)
+	await ensureWishlistACL();
+}
+
+/**
+ * Ensure wishlist has a restrictive ACL (creates one if it doesn't exist)
+ */
+async function ensureWishlistACL(): Promise<void> {
+	const session = auth.getSession();
+	if (!session.info.isLoggedIn || !session.info.webId) {
+		return;
+	}
+
+	const wishlistUrl = getPodBaseUrl(session.info.webId) + WISHLIST_PATH;
+	const aclUrl = wishlistUrl + '.acl';
+
+	// Check if ACL already exists
+	try {
+		const checkResponse = await session.fetch(aclUrl, { method: 'HEAD' });
+		if (checkResponse.ok) {
+			// ACL exists, don't overwrite it
+			return;
+		}
+	} catch {
+		// Error checking, continue to create ACL
+	}
+
+	// Create default restrictive ACL (owner only)
+	const aclTurtle = `@prefix acl: <http://www.w3.org/ns/auth/acl#> .
+
+<#owner>
+    a acl:Authorization ;
+    acl:agent <${session.info.webId}> ;
+    acl:accessTo <./wishlist.ttl> ;
+    acl:mode acl:Read, acl:Write, acl:Control .
+`;
+
+	await session.fetch(aclUrl, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'text/turtle' },
+		body: aclTurtle
+	});
 }
 
 /**
