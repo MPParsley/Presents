@@ -653,22 +653,34 @@ export async function fetchAssignments(occasionUrl: string): Promise<Assignment[
 function parseAssignmentsTurtle(turtle: string): Assignment[] {
 	const assignments: Assignment[] = [];
 
-	// Match each assignment block
-	const assignmentRegex = /<#assignment-\d+>[^.]+\./g;
-	const matches = turtle.match(assignmentRegex) || [];
+	// Match each assignment block - capture everything between <#assignment-N> and the closing " ."
+	// Using a more robust approach: find all giverWebId/receiverWebId pairs
+	const giverRegex = /seg:giverWebId\s+<([^>]+)>/g;
+	const receiverRegex = /seg:receiverWebId\s+<([^>]+)>/g;
+	const nameRegex = /schema:name\s+"([^"]+)"/g;
 
-	for (const match of matches) {
-		const giverMatch = match.match(/seg:giverWebId\s+<([^>]+)>/);
-		const receiverMatch = match.match(/seg:receiverWebId\s+<([^>]+)>/);
-		const nameMatch = match.match(/schema:name\s+"([^"]+)"/);
+	const givers: string[] = [];
+	const receivers: string[] = [];
+	const names: string[] = [];
 
-		if (giverMatch && receiverMatch) {
-			assignments.push({
-				giverWebId: giverMatch[1],
-				receiverWebId: receiverMatch[1],
-				receiverName: nameMatch ? nameMatch[1] : 'Onbekend'
-			});
-		}
+	let match;
+	while ((match = giverRegex.exec(turtle)) !== null) {
+		givers.push(match[1]);
+	}
+	while ((match = receiverRegex.exec(turtle)) !== null) {
+		receivers.push(match[1]);
+	}
+	while ((match = nameRegex.exec(turtle)) !== null) {
+		names.push(match[1]);
+	}
+
+	// Combine them (they should be in order)
+	for (let i = 0; i < givers.length && i < receivers.length; i++) {
+		assignments.push({
+			giverWebId: givers[i],
+			receiverWebId: receivers[i],
+			receiverName: names[i] || 'Onbekend'
+		});
 	}
 
 	return assignments;
