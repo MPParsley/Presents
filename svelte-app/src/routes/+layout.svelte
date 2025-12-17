@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { auth, isLoggedIn, webId, isAuthLoading, getShortWebId } from '$lib/stores/auth';
 	import { base } from '$app/paths';
+	import { t, language, setLanguage, type Language } from '$lib/i18n';
 
 	let { children } = $props();
 
@@ -21,29 +22,36 @@
 	async function handleLogout() {
 		await auth.logout();
 	}
+
+	function toggleLanguage() {
+		setLanguage($language === 'nl' ? 'en' : 'nl');
+	}
 </script>
 
 <svelte:head>
-	<title>Gift Name Shuffler</title>
+	<title>{$t('appName')}</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 </svelte:head>
 
 <div class="app">
 	<header>
-		<h1>Gift Name Shuffler</h1>
+		<h1>{$t('appName')}</h1>
 		<nav>
-			<a href="{base}/">Home</a>
-			<a href="{base}/occasion">Gelegenheden</a>
-			<a href="{base}/wishlist">Mijn Wishlist</a>
-			<a href="{base}/help">Help</a>
+			<a href="{base}/">{$t('home')}</a>
+			<a href="{base}/occasion">{$t('occasions')}</a>
+			<a href="{base}/wishlist">{$t('myWishlist')}</a>
+			<a href="{base}/help">{$t('help')}</a>
 			<span class="spacer"></span>
+			<button class="lang-toggle" onclick={toggleLanguage}>
+				{$language === 'nl' ? 'EN' : 'NL'}
+			</button>
 			{#if $isAuthLoading}
-				<span class="auth-status">Laden...</span>
+				<span class="auth-status">{$t('loading')}</span>
 			{:else if $isLoggedIn && $webId}
 				<span class="auth-status" title={$webId}>{getShortWebId($webId)}</span>
-				<button onclick={handleLogout}>Uitloggen</button>
+				<button onclick={handleLogout}>{$t('logout')}</button>
 			{:else}
-				<button onclick={handleLogin}>Inloggen</button>
+				<button onclick={handleLogin}>{$t('login')}</button>
 			{/if}
 		</nav>
 	</header>
@@ -53,7 +61,7 @@
 	</main>
 
 	<footer>
-		<p>Gift Name Shuffler &mdash; Een eenvoudige app voor cadeautjes uitwisseling.</p>
+		<p>{$t('appName')} &mdash; {$t('appTagline')}</p>
 	</footer>
 </div>
 
@@ -129,6 +137,11 @@
 
 	nav button:hover {
 		background: rgba(255, 255, 255, 0.3);
+	}
+
+	nav .lang-toggle {
+		font-weight: bold;
+		min-width: 36px;
 	}
 
 	@media (min-width: 768px) {

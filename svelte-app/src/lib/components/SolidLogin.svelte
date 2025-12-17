@@ -1,17 +1,18 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import { isLoggedIn, webId, isAuthLoading, getShortWebId } from '$lib/stores/auth';
+	import { isLoggedIn, isAuthLoading } from '$lib/stores/auth';
+	import { t } from '$lib/i18n';
 </script>
 
 {#if $isAuthLoading}
 	<section class="card">
-		<p><em>Laden...</em></p>
+		<p><em>{$t('loading')}</em></p>
 	</section>
 {:else if !$isLoggedIn}
 	<section class="card">
 		<p>
-			Je bent niet ingelogd. Klik op <strong>Inloggen</strong> in de navigatie om verder te gaan.
-			<a href="{base}/help" class="help-link">Hoe werkt dit?</a>
+			{$t('notLoggedIn')} <strong>{$t('login')}</strong> {$t('inNavigation')}
+			<a href="{base}/help" class="help-link">{$t('howDoesThisWork')}</a>
 		</p>
 	</section>
 {/if}

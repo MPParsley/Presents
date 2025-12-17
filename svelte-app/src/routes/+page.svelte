@@ -1,39 +1,34 @@
 <script lang="ts">
 	import { base } from '$app/paths';
+	import { t } from '$lib/i18n';
 	import SolidLogin from '$lib/components/SolidLogin.svelte';
 </script>
 
 <SolidLogin />
 
 <section class="card">
-	<h2>Welkom bij Gift Name Shuffler</h2>
-	<p>Organiseer je cadeautjes uitwisseling met Solid Pods - jouw data blijft van jou!</p>
+	<h2>{$t('welcome')}</h2>
+	<p>{$t('welcomeText')}</p>
 
 	<div class="features">
 		<div class="feature">
-			<h3>Gelegenheden</h3>
-			<p>Maak een gelegenheid aan (Kerst, verjaardag, etc.) en nodig deelnemers uit.</p>
-			<a href="{base}/occasion" class="btn">Naar Gelegenheden</a>
+			<h3>{$t('occasionsTitle')}</h3>
+			<p>{$t('occasionsDesc')}</p>
+			<a href="{base}/occasion" class="btn">{$t('goToOccasions')}</a>
 		</div>
 
 		<div class="feature">
-			<h3>Wishlist</h3>
-			<p>Beheer je persoonlijke wishlist. Je data wordt opgeslagen in je eigen Solid Pod.</p>
-			<a href="{base}/wishlist" class="btn">Naar Wishlist</a>
+			<h3>{$t('wishlistTitle')}</h3>
+			<p>{$t('wishlistDesc')}</p>
+			<a href="{base}/wishlist" class="btn">{$t('goToWishlist')}</a>
 		</div>
 	</div>
 </section>
 
 <section class="card info">
-	<h2>Wat is Solid?</h2>
+	<h2>{$t('whatIsSolid')}</h2>
 	<p>
-		<a href="https://solidproject.org" target="_blank" rel="noopener">Solid</a> is een protocol
-		waarmee je zelf de controle houdt over je data. Je gegevens worden opgeslagen in je persoonlijke
-		"Pod" - niet op onze servers.
-	</p>
-	<p>
-		Nog geen Solid Pod? Maak er gratis een aan bij
-		<a href="https://solidcommunity.net" target="_blank" rel="noopener">solidcommunity.net</a>.
+		<a href="https://solidproject.org" target="_blank" rel="noopener">Solid</a> {$t('solidDescription')}
 	</p>
 </section>
 
