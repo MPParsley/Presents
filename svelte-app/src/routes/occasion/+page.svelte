@@ -241,12 +241,12 @@
 			occasionUrl = null;
 			currentOccasion = null;
 			participants = [];
-			isLoading = false;
 
 			// Reload my occasions list
 			await loadMyOccasions();
 		} catch (e) {
 			error = $t('couldNotDelete') + ' ' + (e as Error).message;
+		} finally {
 			isLoading = false;
 		}
 	}
