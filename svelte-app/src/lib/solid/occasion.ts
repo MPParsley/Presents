@@ -470,8 +470,8 @@ export async function getMyRegistrations(): Promise<string[]> {
 		const turtle = await response.text();
 		const occasionUrls: string[] = [];
 
-		// Parse occasion URLs from the turtle
-		const regex = /seg:occasionUrl\s+<([^>]+)>/g;
+		// Parse occasion URLs from the turtle (matches both prefixed and full URI form)
+		const regex = /<https:\/\/segersrosseel\.be\/ns\/gift#occasionUrl>\s+<([^>]+)>/g;
 		let match;
 		while ((match = regex.exec(turtle)) !== null) {
 			occasionUrls.push(match[1]);
