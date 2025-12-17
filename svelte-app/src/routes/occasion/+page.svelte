@@ -137,8 +137,16 @@
 				adminWebId: $webId
 			});
 
-			// Navigate to new occasion
-			goto(`${base}/occasion?occasion=${encodeURIComponent(result.occasionUrl)}`);
+			// Clear form
+			newOccasionName = '';
+			newOccasionDate = '';
+
+			// Set occasion URL - the $effect will load the occasion data
+			sessionStorage.setItem('current_occasion_url', result.occasionUrl);
+			occasionUrl = result.occasionUrl;
+
+			// Update URL in browser
+			goto(`${base}/occasion?occasion=${encodeURIComponent(result.occasionUrl)}`, { replaceState: true });
 		} catch (e) {
 			error = $t('couldNotCreate') + ' ' + (e as Error).message;
 		} finally {
