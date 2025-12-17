@@ -78,6 +78,12 @@
 		isLoading = true;
 		error = null;
 
+		// Reset state to prevent using stale data from previous occasion
+		currentOccasion = null;
+		participants = [];
+		isAdmin = false;
+		isRegistered = false;
+
 		try {
 			currentOccasion = await fetchOccasion(url);
 			isAdmin = $webId === currentOccasion.adminWebId;
