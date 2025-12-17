@@ -23,13 +23,8 @@
 		type Assignment
 	} from '$lib/solid';
 
-	// Derived from URL - no state needed
-	let occasionUrl = $derived(
-		$page.url.searchParams.get('occasion') ||
-			($page.url.searchParams.has('code')
-				? sessionStorage.getItem('current_occasion_url')
-				: null)
-	);
+	// Derived from URL
+	let occasionUrl = $derived($page.url.searchParams.get('occasion'));
 
 	// Async loaded data - needs state
 	let currentOccasion = $state<Occasion | null>(null);
@@ -55,16 +50,6 @@
 	let isEditing = $state(false);
 	let editName = $state('');
 	let editDate = $state('');
-
-	// Store occasion URL for OIDC redirect recovery
-	$effect(() => {
-		const urlParam = $page.url.searchParams.get('occasion');
-		if (urlParam) {
-			sessionStorage.setItem('current_occasion_url', urlParam);
-		} else if (!$page.url.searchParams.has('code')) {
-			sessionStorage.removeItem('current_occasion_url');
-		}
-	});
 
 	// Load occasion when URL changes
 	$effect(() => {
@@ -114,7 +99,6 @@
 		} catch (e) {
 			const errorMessage = (e as Error).message;
 			if (errorMessage.includes('404')) {
-				sessionStorage.removeItem('current_occasion_url');
 				goto(`${base}/occasion`, { replaceState: true });
 			} else {
 				error = $t('couldNotLoad') + ' ' + errorMessage;
@@ -263,7 +247,6 @@
 
 		try {
 			await deleteOccasion(occasionUrl);
-			sessionStorage.removeItem('current_occasion_url');
 			goto(`${base}/occasion`);
 		} catch (e) {
 			error = $t('couldNotDelete') + ' ' + (e as Error).message;
