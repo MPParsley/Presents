@@ -1,63 +1,62 @@
 <script lang="ts">
 	import { base } from '$app/paths';
+	import { t } from '$lib/i18n';
 </script>
 
 <section class="card">
-	<h1>Hoe werkt het?</h1>
+	<h1>{$t('howDoesItWork')}</h1>
 
 	<p class="intro">
-		Deze app gebruikt <strong>Solid Pods</strong> om je gegevens veilig op te slaan.
-		Jij bepaalt wie toegang heeft tot jouw data.
+		{$t('helpIntro')}
 	</p>
 
-	<h2>Wat is een Solid Pod?</h2>
+	<h2>{$t('whatIsSolidPod')}</h2>
 	<p>
-		Een Solid Pod is jouw persoonlijke online opslag. Het is als een kluis voor je gegevens
-		waar alleen jij de sleutel van hebt. Je kiest zelf welke apps toegang krijgen.
+		{$t('solidPodExplanation')}
 	</p>
 
-	<h2>Account aanmaken</h2>
+	<h2>{$t('createAccount')}</h2>
 	<ol>
-		<li>Ga naar <a href="https://solidcommunity.net/.account/login/password/register/" target="_blank" rel="noopener">solidcommunity.net registratie</a></li>
-		<li>Vul je e-mailadres en wachtwoord in</li>
-		<li>Klik op "Register"</li>
+		<li><a href="https://solidcommunity.net/.account/login/password/register/" target="_blank" rel="noopener">{$t('goToRegistration')}</a></li>
+		<li>{$t('fillEmailPassword')}</li>
+		<li>{$t('clickRegister')}</li>
 	</ol>
-	<img src="{base}/help/register.png" alt="Account aanmaken scherm" class="screenshot" />
+	<img src="{base}/help/register.png" alt="{$t('createAccount')}" class="screenshot" />
 
-	<h2>Maak een Pod</h2>
+	<h2>{$t('createPod')}</h2>
 	<ol>
-		<li>Klik op "Create pod"</li>
-		<li>Vul je naam in (dit wordt onderdeel van je WebID)</li>
-		<li>Klik op "Create pod"</li>
-		<li>Je hebt nu een Solid Pod!</li>
+		<li>{$t('clickCreatePod')}</li>
+		<li>{$t('fillName')}</li>
+		<li>{$t('clickCreatePodButton')}</li>
+		<li>{$t('youHavePod')}</li>
 	</ol>
-	<img src="{base}/help/account.png" alt="Pod aanmaken scherm" class="screenshot" />
+	<img src="{base}/help/account.png" alt="{$t('createPod')}" class="screenshot" />
 
-	<h2>Inloggen in deze app</h2>
+	<h2>{$t('loginToApp')}</h2>
 	<ol>
-		<li>Selecteer <strong>"solidcommunity.net"</strong> als provider</li>
-		<li>Klik op <strong>"Inloggen met Solid"</strong></li>
-		<li>Je wordt doorgestuurd naar solidcommunity.net</li>
-		<li>Log daar in met je e-mailadres en wachtwoord</li>
-		<li>Selecteer je WebID en klik op "Authorize"</li>
-		<li>Je bent ingelogd!</li>
+		<li>{$t('selectProvider')}</li>
+		<li>{$t('clickLogin')}</li>
+		<li>{$t('redirected')}</li>
+		<li>{$t('loginThere')}</li>
+		<li>{$t('selectWebId')}</li>
+		<li>{$t('youAreLoggedIn')}</li>
 	</ol>
-	<img src="{base}/help/login.png" alt="Autorisatie scherm" class="screenshot" />
+	<img src="{base}/help/login.png" alt="{$t('loginToApp')}" class="screenshot" />
 
-	<h2>Deelnemen aan een gelegenheid</h2>
+	<h2>{$t('participateInOccasion')}</h2>
 	<ol>
-		<li>Open de uitnodigingslink die je hebt ontvangen</li>
-		<li>Log in met je Solid account</li>
-		<li>Klik op <strong>"Schrijf me in"</strong></li>
-		<li>Ga naar <a href="{base}/wishlist">Wishlist</a> om je verlanglijstje te beheren</li>
+		<li>{$t('openInviteLink')}</li>
+		<li>{$t('loginWithSolid')}</li>
+		<li>{$t('clickRegisterButton')}</li>
+		<li><a href="{base}/wishlist">{$t('myWishlist')}</a> {$t('goToWishlistManage')}</li>
 	</ol>
 
-	<h2>Meer informatie</h2>
+	<h2>{$t('moreInfo')}</h2>
 	<p>
-		Lees meer over Solid op <a href="https://solidproject.org" target="_blank" rel="noopener">solidproject.org</a>
+		{$t('readMoreSolid')} <a href="https://solidproject.org" target="_blank" rel="noopener">solidproject.org</a>
 	</p>
 
-	<a href="{base}/" class="back-link">← Terug naar home</a>
+	<a href="{base}/" class="back-link">{$t('backToHome')}</a>
 </section>
 
 <style>

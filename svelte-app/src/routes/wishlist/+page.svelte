@@ -2,6 +2,7 @@
 	import { isLoggedIn, webId, isAuthLoading } from '$lib/stores/auth';
 	import SolidLogin from '$lib/components/SolidLogin.svelte';
 	import { getWishlist, saveWishlist, type WishlistItem, generateId } from '$lib/solid';
+	import { t } from '$lib/i18n';
 
 	// State
 	let wishlistItems = $state<WishlistItem[]>([]);
@@ -30,7 +31,7 @@
 		try {
 			wishlistItems = await getWishlist($webId);
 		} catch (e) {
-			error = 'Kon wishlist niet laden: ' + (e as Error).message;
+			error = $t('couldNotLoadWishlist') + ' ' + (e as Error).message;
 		} finally {
 			isLoading = false;
 		}
@@ -38,7 +39,7 @@
 
 	async function addItem() {
 		if (!newItemName.trim()) {
-			alert('Vul een naam in voor het item.');
+			alert($t('enterItemName'));
 			return;
 		}
 
@@ -63,12 +64,12 @@
 		} catch (e) {
 			// Revert
 			wishlistItems = wishlistItems.slice(0, -1);
-			error = 'Kon item niet opslaan: ' + (e as Error).message;
+			error = $t('couldNotSave') + ' ' + (e as Error).message;
 		}
 	}
 
 	async function removeItem(index: number) {
-		if (!confirm('Weet je zeker dat je dit item wilt verwijderen?')) return;
+		if (!confirm($t('confirmRemoveItem'))) return;
 
 		const removed = wishlistItems[index];
 		wishlistItems = wishlistItems.filter((_, i) => i !== index);
@@ -78,7 +79,7 @@
 		} catch (e) {
 			// Revert
 			wishlistItems = [...wishlistItems.slice(0, index), removed, ...wishlistItems.slice(index)];
-			error = 'Kon item niet verwijderen: ' + (e as Error).message;
+			error = $t('couldNotRemove') + ' ' + (e as Error).message;
 		}
 	}
 
@@ -105,20 +106,20 @@
 
 {#if !$isLoggedIn}
 	<section class="card">
-		<p>Log in met je Solid account om je wishlist te beheren.</p>
+		<p>{$t('loginToManageWishlist')}</p>
 	</section>
 {:else if isLoading}
-	<div class="loading">Wishlist laden...</div>
+	<div class="loading">{$t('wishlistLoading')}</div>
 {:else}
 	{#if error}
 		<div class="error">{error}</div>
 	{/if}
 
 	<section class="card">
-		<h2>Mijn Wishlist</h2>
+		<h2>{$t('myWishlistTitle')}</h2>
 
 		{#if wishlistItems.length === 0}
-			<p><em>Je wishlist is nog leeg. Voeg items toe!</em></p>
+			<p><em>{$t('wishlistEmpty')}</em></p>
 		{:else}
 			<ul class="wishlist">
 				{#each wishlistItems as item, index}
@@ -130,7 +131,7 @@
 								<p class="description">{item.description}</p>
 							{/if}
 							{#if item.url}
-								<a href={item.url} target="_blank" rel="noopener">Link →</a>
+								<a href={item.url} target="_blank" rel="noopener">{$t('linkArrow')}</a>
 							{/if}
 						</div>
 						<div class="item-actions">
@@ -145,31 +146,31 @@
 	</section>
 
 	<section class="card">
-		<h3>Item Toevoegen</h3>
+		<h3>{$t('addNewItem')}</h3>
 		<div class="form">
 			<label>
-				Naam *
-				<input type="text" bind:value={newItemName} placeholder="bijv. Boek over tuinieren" />
+				{$t('itemNameRequired')}
+				<input type="text" bind:value={newItemName} placeholder={$t('itemPlaceholder')} />
 			</label>
 			<label>
-				Beschrijving
-				<textarea bind:value={newItemDescription} placeholder="Optionele beschrijving..."></textarea>
+				{$t('description')}
+				<textarea bind:value={newItemDescription} placeholder={$t('descriptionPlaceholder')}></textarea>
 			</label>
 			<label>
-				Link (URL)
+				{$t('linkUrl')}
 				<input type="url" bind:value={newItemUrl} placeholder="https://..." />
 			</label>
 			<label>
-				Prioriteit
+				{$t('priority')}
 				<select bind:value={newItemPriority}>
-					<option value={5}>⭐⭐⭐⭐⭐ Heel graag</option>
-					<option value={4}>⭐⭐⭐⭐ Graag</option>
-					<option value={3}>⭐⭐⭐ Normaal</option>
-					<option value={2}>⭐⭐ Minder</option>
-					<option value={1}>⭐ Als het moet</option>
+					<option value={5}>⭐⭐⭐⭐⭐ {$t('priority5')}</option>
+					<option value={4}>⭐⭐⭐⭐ {$t('priority4')}</option>
+					<option value={3}>⭐⭐⭐ {$t('priority3')}</option>
+					<option value={2}>⭐⭐ {$t('priority2')}</option>
+					<option value={1}>⭐ {$t('priority1')}</option>
 				</select>
 			</label>
-			<button class="primary" onclick={addItem}>Toevoegen</button>
+			<button class="primary" onclick={addItem}>{$t('add')}</button>
 		</div>
 	</section>
 {/if}

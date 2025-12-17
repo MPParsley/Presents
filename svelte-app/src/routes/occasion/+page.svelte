@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { auth, isLoggedIn, webId, isAuthLoading } from '$lib/stores/auth';
+	import { t } from '$lib/i18n';
 	import SolidLogin from '$lib/components/SolidLogin.svelte';
 	import {
 		createOccasion,
@@ -92,7 +93,7 @@
 					await loadMyOccasions();
 				}
 			} else {
-				error = 'Kon gelegenheid niet laden: ' + errorMessage;
+				error = $t('couldNotLoad') + ' ' + errorMessage;
 			}
 		} finally {
 			isLoading = false;
@@ -111,12 +112,12 @@
 
 	async function handleCreateOccasion() {
 		if (!newOccasionName.trim()) {
-			alert('Vul een naam in voor de gelegenheid.');
+			alert($t('enterOccasionName'));
 			return;
 		}
 
 		if (!$webId) {
-			alert('Je moet eerst inloggen.');
+			alert($t('mustLogin'));
 			return;
 		}
 
@@ -139,7 +140,7 @@
 			// Navigate to new occasion
 			goto(`${base}/occasion?occasion=${encodeURIComponent(result.occasionUrl)}`);
 		} catch (e) {
-			error = 'Kon gelegenheid niet aanmaken: ' + (e as Error).message;
+			error = $t('couldNotCreate') + ' ' + (e as Error).message;
 		} finally {
 			isLoading = false;
 		}
@@ -155,7 +156,7 @@
 			await registerParticipant(currentOccasion.registrationsUrl, $webId);
 			isRegistered = true;
 		} catch (e) {
-			error = 'Kon niet inschrijven: ' + (e as Error).message;
+			error = $t('couldNotRegister') + ' ' + (e as Error).message;
 		} finally {
 			isLoading = false;
 		}
@@ -164,7 +165,7 @@
 	function copyShareLink() {
 		const link = `${window.location.origin}${base}/occasion?occasion=${encodeURIComponent(occasionUrl || '')}`;
 		navigator.clipboard.writeText(link).then(() => {
-			alert('Link gekopieerd!');
+			alert($t('linkCopied'));
 		});
 	}
 
@@ -184,7 +185,7 @@
 
 	async function handleSaveEdit() {
 		if (!editName.trim() || !occasionUrl || !currentOccasion?.adminWebId) {
-			alert('Vul een naam in.');
+			alert($t('enterName'));
 			return;
 		}
 
@@ -202,7 +203,7 @@
 			await loadOccasion(occasionUrl);
 			isEditing = false;
 		} catch (e) {
-			error = 'Kon gelegenheid niet bijwerken: ' + (e as Error).message;
+			error = $t('couldNotUpdate') + ' ' + (e as Error).message;
 		} finally {
 			isLoading = false;
 		}
@@ -211,7 +212,7 @@
 	async function handleDelete() {
 		if (!occasionUrl) return;
 
-		if (!confirm('Weet je zeker dat je deze gelegenheid wilt verwijderen? Dit kan niet ongedaan worden gemaakt.')) {
+		if (!confirm($t('confirmDelete'))) {
 			return;
 		}
 
@@ -223,7 +224,7 @@
 			sessionStorage.removeItem('current_occasion_url');
 			goto(`${base}/occasion`);
 		} catch (e) {
-			error = 'Kon gelegenheid niet verwijderen: ' + (e as Error).message;
+			error = $t('couldNotDelete') + ' ' + (e as Error).message;
 			isLoading = false;
 		}
 	}
@@ -236,7 +237,7 @@
 <SolidLogin />
 
 {#if isLoading}
-	<div class="loading">Laden...</div>
+	<div class="loading">{$t('loading')}</div>
 {:else if error}
 	<div class="error">{error}</div>
 {:else if currentOccasion}
@@ -245,19 +246,19 @@
 		{#if isEditing}
 			<!-- Edit form -->
 			<div class="edit-form">
-				<h3>Gelegenheid Bewerken</h3>
+				<h3>{$t('editOccasion')}</h3>
 				<div class="form">
 					<label>
-						Naam
+						{$t('name')}
 						<input type="text" bind:value={editName} />
 					</label>
 					<label>
-						Datum (optioneel)
+						{$t('dateOptional')}
 						<input type="date" bind:value={editDate} />
 					</label>
 					<div class="button-row">
-						<button class="primary" onclick={handleSaveEdit}>Opslaan</button>
-						<button onclick={cancelEditing}>Annuleren</button>
+						<button class="primary" onclick={handleSaveEdit}>{$t('save')}</button>
+						<button onclick={cancelEditing}>{$t('cancel')}</button>
 					</div>
 				</div>
 			</div>
@@ -268,7 +269,7 @@
 					<p class="date">{currentOccasion.date}</p>
 				{/if}
 				{#if currentOccasion.adminWebId}
-					<p class="admin">Georganiseerd door: {getShortWebId(currentOccasion.adminWebId)}</p>
+					<p class="admin">{$t('organizedBy')} {getShortWebId(currentOccasion.adminWebId)}</p>
 				{/if}
 			</div>
 		{/if}
@@ -276,20 +277,20 @@
 		{#if isAdmin && !isEditing}
 			<!-- Admin actions -->
 			<div class="admin-actions">
-				<button onclick={startEditing}>✏️ Bewerken</button>
-				<button class="danger" onclick={handleDelete}>🗑️ Verwijderen</button>
+				<button onclick={startEditing}>✏️ {$t('edit')}</button>
+				<button class="danger" onclick={handleDelete}>🗑️ {$t('delete')}</button>
 			</div>
 
 			<!-- Admin view -->
 			<div class="participants-section">
-				<h3>Ingeschreven Deelnemers ({participants.length})</h3>
+				<h3>{$t('registeredParticipants')} ({participants.length})</h3>
 				{#if participants.length === 0}
-					<p><em>Nog geen inschrijvingen.</em></p>
+					<p><em>{$t('noRegistrations')}</em></p>
 				{:else}
 					<ul class="participant-list">
 						{#each participants as p}
 							<li>
-								<span class="name">{p.name || 'Onbekend'}</span>
+								<span class="name">{p.name || $t('unknown')}</span>
 								<span class="webid">{p.webId}</span>
 							</li>
 						{/each}
@@ -298,38 +299,38 @@
 			</div>
 
 			<div class="share-section">
-				<h4>Uitnodigingslink</h4>
-				<p>Deel deze link met deelnemers:</p>
-				<button onclick={copyShareLink}>Kopieer link</button>
+				<h4>{$t('inviteLink')}</h4>
+				<p>{$t('shareLink')}</p>
+				<button onclick={copyShareLink}>{$t('copyLink')}</button>
 			</div>
 		{:else if $isLoggedIn && !isEditing}
 			<!-- Participant view -->
 			{#if isRegistered}
 				<div class="success">
-					<h3>Je bent ingeschreven!</h3>
-					<p>Je neemt deel aan {currentOccasion.name}.</p>
-					<p><a href="{base}/wishlist">Beheer je wishlist →</a></p>
+					<h3>{$t('youAreRegistered')}</h3>
+					<p>{$t('participatingIn')} {currentOccasion.name}.</p>
+					<p><a href="{base}/wishlist">{$t('manageWishlist')}</a></p>
 				</div>
 			{:else}
 				<div class="register-section">
-					<p>Schrijf je in voor deze gelegenheid zodat anderen je wishlist kunnen zien.</p>
-					<button class="primary" onclick={handleRegister}>Schrijf me in</button>
+					<p>{$t('registerForOccasion')}</p>
+					<button class="primary" onclick={handleRegister}>{$t('register')}</button>
 				</div>
 			{/if}
 		{:else}
-			<p>Log in om je in te schrijven voor deze gelegenheid.</p>
+			<p>{$t('loginToRegister')}</p>
 		{/if}
 	</section>
 {:else if $isLoggedIn}
 	<!-- No occasion selected - show create form and list -->
 	{#if myOccasions.length > 0}
 		<section class="card">
-			<h2>Mijn Gelegenheden</h2>
+			<h2>{$t('myOccasions')}</h2>
 			<ul class="occasion-list">
 				{#each myOccasions as occ}
 					<li>
 						<span>{occ.name}</span>
-						<a href="{base}/occasion?occasion={encodeURIComponent(occ.url)}" class="btn">Bekijk</a>
+						<a href="{base}/occasion?occasion={encodeURIComponent(occ.url)}" class="btn">{$t('view')}</a>
 					</li>
 				{/each}
 			</ul>
@@ -337,22 +338,22 @@
 	{/if}
 
 	<section class="card">
-		<h2>Nieuwe Gelegenheid Aanmaken</h2>
+		<h2>{$t('createNewOccasion')}</h2>
 		<div class="form">
 			<label>
-				Naam
-				<input type="text" bind:value={newOccasionName} placeholder="bijv. Kerstfeest 2025" />
+				{$t('name')}
+				<input type="text" bind:value={newOccasionName} placeholder={$t('occasionPlaceholder')} />
 			</label>
 			<label>
-				Datum (optioneel)
+				{$t('dateOptional')}
 				<input type="date" bind:value={newOccasionDate} />
 			</label>
-			<button class="primary" onclick={handleCreateOccasion}>Aanmaken</button>
+			<button class="primary" onclick={handleCreateOccasion}>{$t('create')}</button>
 		</div>
 	</section>
 {:else}
 	<section class="card">
-		<p>Log in om een nieuwe gelegenheid aan te maken, of open een uitnodigingslink.</p>
+		<p>{$t('loginToCreate')}</p>
 	</section>
 {/if}
 
