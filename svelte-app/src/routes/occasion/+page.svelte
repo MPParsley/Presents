@@ -154,11 +154,14 @@
 	async function handleRegister() {
 		if (!$webId || !currentOccasion || !occasionUrl) return;
 
+		// Derive registrationsUrl directly from occasionUrl to avoid stale data
+		const registrationsUrl = occasionUrl.replace('occasion.ttl', 'registrations/');
+
 		isLoading = true;
 		error = null;
 
 		try {
-			await registerParticipant(currentOccasion.registrationsUrl, $webId, occasionUrl);
+			await registerParticipant(registrationsUrl, $webId, occasionUrl);
 			isRegistered = true;
 		} catch (e) {
 			error = $t('couldNotRegister') + ' ' + (e as Error).message;
