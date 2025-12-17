@@ -72,6 +72,51 @@ export async function saveWishlist(items: WishlistItem[]): Promise<void> {
 	cacheWishlist(session.info.webId, items);
 }
 
+/**
+ * Set ACL on current user's wishlist to restrict access
+ * @param allowedReaders - WebIDs of users who can read the wishlist (besides owner)
+ */
+export async function setWishlistACL(allowedReaders: string[]): Promise<void> {
+	const session = auth.getSession();
+	if (!session.info.isLoggedIn || !session.info.webId) {
+		throw new Error('Not logged in');
+	}
+
+	const wishlistUrl = getPodBaseUrl(session.info.webId) + WISHLIST_PATH;
+	const aclUrl = wishlistUrl + '.acl';
+
+	// Build ACL entries for allowed readers
+	let readerEntries = '';
+	allowedReaders.forEach((webId, index) => {
+		readerEntries += `
+<#reader${index}>
+    a acl:Authorization ;
+    acl:agent <${webId}> ;
+    acl:accessTo <./wishlist.ttl> ;
+    acl:mode acl:Read .
+`;
+	});
+
+	const aclTurtle = `@prefix acl: <http://www.w3.org/ns/auth/acl#> .
+
+<#owner>
+    a acl:Authorization ;
+    acl:agent <${session.info.webId}> ;
+    acl:accessTo <./wishlist.ttl> ;
+    acl:mode acl:Read, acl:Write, acl:Control .
+${readerEntries}`;
+
+	const response = await session.fetch(aclUrl, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'text/turtle' },
+		body: aclTurtle
+	});
+
+	if (!response.ok) {
+		console.warn('Could not set wishlist ACL:', response.status, await response.text().catch(() => ''));
+	}
+}
+
 // Cache functions
 function cacheWishlist(webId: string, items: WishlistItem[]): void {
 	try {

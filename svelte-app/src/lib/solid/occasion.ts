@@ -545,6 +545,14 @@ export async function performLottery(
 		await storeIndividualAssignment(baseUrl, assignment, session.info.webId!);
 	}
 
+	// Also store "drawer" files so each participant knows who drew them
+	for (const assignment of assignments) {
+		const drawer = assignments.find(a => a.receiverWebId === assignment.giverWebId);
+		if (drawer) {
+			await storeDrawerInfo(baseUrl, assignment.giverWebId, drawer.giverWebId, session.info.webId!);
+		}
+	}
+
 	return assignments;
 }
 
@@ -604,6 +612,94 @@ async function storeIndividualAssignment(
 		headers: { 'Content-Type': 'text/turtle' },
 		body: aclTurtle
 	});
+}
+
+/**
+ * Store info about who draws a specific participant (so they can set ACL on their wishlist)
+ */
+async function storeDrawerInfo(
+	baseUrl: string,
+	receiverWebId: string,
+	drawerWebId: string,
+	ownerWebId: string
+): Promise<void> {
+	const session = auth.getSession();
+
+	// Create a filename based on receiver's webId
+	const receiverHash = btoa(receiverWebId).replace(/[/+=]/g, '_').substring(0, 20);
+	const drawerUrl = `${baseUrl}drawer-for-${receiverHash}.ttl`;
+
+	const turtle = `@prefix seg: <https://segersrosseel.be/ns/gift#> .
+
+<#drawerInfo> a seg:DrawerInfo ;
+    seg:receiverWebId <${receiverWebId}> ;
+    seg:drawerWebId <${drawerWebId}> .
+`;
+
+	const response = await session.fetch(drawerUrl, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'text/turtle' },
+		body: turtle
+	});
+
+	if (!response.ok) {
+		console.warn('Could not save drawer info:', response.status);
+		return;
+	}
+
+	// Set ACL: only owner (admin) and the receiver can read this file
+	const aclUrl = drawerUrl + '.acl';
+	const aclTurtle = `@prefix acl: <http://www.w3.org/ns/auth/acl#> .
+
+<#owner>
+    a acl:Authorization ;
+    acl:agent <${ownerWebId}> ;
+    acl:accessTo <./drawer-for-${receiverHash}.ttl> ;
+    acl:mode acl:Read, acl:Write, acl:Control .
+
+<#receiver>
+    a acl:Authorization ;
+    acl:agent <${receiverWebId}> ;
+    acl:accessTo <./drawer-for-${receiverHash}.ttl> ;
+    acl:mode acl:Read .
+`;
+
+	await session.fetch(aclUrl, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'text/turtle' },
+		body: aclTurtle
+	});
+}
+
+/**
+ * Get the webId of the person who drew the current user
+ */
+export async function getWhoDrawsMe(occasionUrl: string): Promise<string | null> {
+	const session = auth.getSession();
+	if (!session.info.isLoggedIn || !session.info.webId) {
+		return null;
+	}
+
+	const baseUrl = occasionUrl.replace('occasion.ttl', '');
+	const receiverHash = btoa(session.info.webId).replace(/[/+=]/g, '_').substring(0, 20);
+	const drawerUrl = `${baseUrl}drawer-for-${receiverHash}.ttl`;
+
+	try {
+		const response = await session.fetch(drawerUrl, {
+			headers: { Accept: 'text/turtle' }
+		});
+
+		if (!response.ok) {
+			return null;
+		}
+
+		const turtle = await response.text();
+		const drawerMatch = turtle.match(/seg:drawerWebId\s+<([^>]+)>/);
+
+		return drawerMatch ? drawerMatch[1] : null;
+	} catch {
+		return null;
+	}
 }
 
 function generateAssignmentsTurtle(assignments: Assignment[]): string {

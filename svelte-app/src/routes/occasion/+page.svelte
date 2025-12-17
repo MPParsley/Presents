@@ -18,6 +18,8 @@
 		performLottery,
 		fetchAssignments,
 		getMyAssignment,
+		getWhoDrawsMe,
+		setWishlistACL,
 		type Occasion,
 		type Participant,
 		type Assignment
@@ -95,6 +97,17 @@
 
 				// Everyone gets their own assignment (if lottery has been done)
 				myAssignment = await getMyAssignment(url);
+
+				// If there's a lottery, update wishlist ACL to allow admin and drawer to read
+				if (myAssignment && isRegistered) {
+					const whoDrawsMe = await getWhoDrawsMe(url);
+					const allowedReaders: string[] = [currentOccasion.adminWebId];
+					if (whoDrawsMe) {
+						allowedReaders.push(whoDrawsMe);
+					}
+					// Update ACL (runs in background, don't block loading)
+					setWishlistACL(allowedReaders).catch(console.warn);
+				}
 			}
 		} catch (e) {
 			const errorMessage = (e as Error).message;
