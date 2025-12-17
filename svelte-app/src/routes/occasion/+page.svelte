@@ -12,6 +12,7 @@
 		registerParticipant,
 		fetchParticipants,
 		checkMyRegistration,
+		getMyRegistrations,
 		updateOccasion,
 		deleteOccasion,
 		type Occasion,
@@ -30,6 +31,7 @@
 	let currentOccasion = $state<Occasion | null>(null);
 	let participants = $state<Participant[]>([]);
 	let myOccasions = $state<Array<{ name: string; url: string }>>([]);
+	let registeredOccasions = $state<Array<{ name: string; url: string }>>([]);
 	let isRegistered = $state(false);
 
 	// UI state
@@ -70,10 +72,11 @@
 		}
 	});
 
-	// Load my occasions when logged in and no occasion selected
+	// Load my occasions and registered occasions when logged in and no occasion selected
 	$effect(() => {
 		if ($isLoggedIn && $webId && !occasionUrl && !$isAuthLoading) {
 			loadMyOccasions();
+			loadRegisteredOccasions();
 		}
 	});
 
@@ -111,6 +114,26 @@
 			myOccasions = await fetchMyOccasions($webId);
 		} catch (e) {
 			console.warn('Could not load occasions:', e);
+		}
+	}
+
+	async function loadRegisteredOccasions() {
+		try {
+			const occasionUrls = await getMyRegistrations();
+			const occasions: Array<{ name: string; url: string }> = [];
+
+			for (const url of occasionUrls) {
+				try {
+					const occasion = await fetchOccasion(url);
+					occasions.push({ name: occasion.name, url });
+				} catch {
+					// Occasion might have been deleted, skip it
+				}
+			}
+
+			registeredOccasions = occasions;
+		} catch (e) {
+			console.warn('Could not load registered occasions:', e);
 		}
 	}
 
@@ -326,6 +349,20 @@
 			<h2>{$t('myOccasions')}</h2>
 			<ul class="occasion-list">
 				{#each myOccasions as occ}
+					<li>
+						<span>{occ.name}</span>
+						<a href="{base}/occasion?occasion={encodeURIComponent(occ.url)}" class="btn">{$t('view')}</a>
+					</li>
+				{/each}
+			</ul>
+		</section>
+	{/if}
+
+	{#if registeredOccasions.length > 0}
+		<section class="card">
+			<h2>{$t('registeredOccasions')}</h2>
+			<ul class="occasion-list">
+				{#each registeredOccasions as occ}
 					<li>
 						<span>{occ.name}</span>
 						<a href="{base}/occasion?occasion={encodeURIComponent(occ.url)}" class="btn">{$t('view')}</a>

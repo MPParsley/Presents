@@ -37,6 +37,7 @@ const translations = {
 
 		// Occasions
 		myOccasions: 'Mijn Gelegenheden',
+		registeredOccasions: 'Ingeschreven Gelegenheden',
 		view: 'Bekijk',
 		createNewOccasion: 'Nieuwe Gelegenheid Aanmaken',
 		name: 'Naam',
@@ -170,6 +171,7 @@ const translations = {
 
 		// Occasions
 		myOccasions: 'My Occasions',
+		registeredOccasions: 'Registered Occasions',
 		view: 'View',
 		createNewOccasion: 'Create New Occasion',
 		name: 'Name',
