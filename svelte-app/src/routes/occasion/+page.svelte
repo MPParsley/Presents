@@ -265,11 +265,7 @@
 	}
 </script>
 
-{#if $isAuthLoading}
-	<div class="loading">{$t('loading')}</div>
-{:else if !$isLoggedIn}
-	<SolidLogin message={occasionUrl ? $t('loginToRegister') : $t('loginToCreate')} />
-{:else if isLoading}
+{#if $isAuthLoading || isLoading}
 	<div class="loading">{$t('loading')}</div>
 {:else if error}
 	<div class="error">{error}</div>
@@ -305,7 +301,9 @@
 			</div>
 		{/if}
 
-		{#if isAdmin && !isEditing}
+		{#if !$isLoggedIn}
+			<SolidLogin message={$t('loginToRegister')} />
+		{:else if isAdmin && !isEditing}
 			<div class="admin-actions">
 				<button onclick={startEditing}>✏️ {$t('edit')}</button>
 				<button class="danger" onclick={handleDelete}>🗑️ {$t('delete')}</button>
@@ -360,6 +358,8 @@
 			{/if}
 		{/if}
 	</section>
+{:else if !$isLoggedIn}
+	<SolidLogin message={$t('loginToCreate')} />
 {:else}
 	{#if myOccasions.length > 0}
 		<section class="card">
