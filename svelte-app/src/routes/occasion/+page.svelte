@@ -238,9 +238,11 @@
 	}
 </script>
 
-<SolidLogin />
-
-{#if isLoading}
+{#if $isAuthLoading}
+	<div class="loading">{$t('loading')}</div>
+{:else if !$isLoggedIn}
+	<SolidLogin message={occasionUrl ? $t('loginToRegister') : $t('loginToCreate')} />
+{:else if isLoading}
 	<div class="loading">{$t('loading')}</div>
 {:else if error}
 	<div class="error">{error}</div>
@@ -303,7 +305,7 @@
 				<p>{$t('shareLink')}</p>
 				<button onclick={copyShareLink}>{$t('copyLink')}</button>
 			</div>
-		{:else if $isLoggedIn && !isEditing}
+		{:else if !isEditing}
 			{#if isRegistered}
 				<div class="success">
 					<h3>{$t('youAreRegistered')}</h3>
@@ -316,11 +318,9 @@
 					<button class="primary" onclick={handleRegister}>{$t('register')}</button>
 				</div>
 			{/if}
-		{:else}
-			<p>{$t('loginToRegister')}</p>
 		{/if}
 	</section>
-{:else if $isLoggedIn}
+{:else}
 	{#if myOccasions.length > 0}
 		<section class="card">
 			<h2>{$t('myOccasions')}</h2>
@@ -348,10 +348,6 @@
 			</label>
 			<button class="primary" onclick={handleCreateOccasion}>{$t('create')}</button>
 		</div>
-	</section>
-{:else}
-	<section class="card">
-		<p>{$t('loginToCreate')}</p>
 	</section>
 {/if}
 

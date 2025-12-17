@@ -102,12 +102,8 @@
 	}
 </script>
 
-<SolidLogin />
-
 {#if !$isLoggedIn}
-	<section class="card">
-		<p>{$t('loginToManageWishlist')}</p>
-	</section>
+	<SolidLogin message={$t('loginToManageWishlist')} />
 {:else if isLoading}
 	<div class="loading">{$t('wishlistLoading')}</div>
 {:else}
