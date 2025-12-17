@@ -10,7 +10,7 @@ export const SOLID_PROVIDERS = [
 export const PRESENTS_PATH = '/public/presents';
 export const WISHLIST_PATH = `${PRESENTS_PATH}/wishlist.ttl`;
 export const OCCASIONS_PATH = `${PRESENTS_PATH}/occasions`;
-export const MY_REGISTRATIONS_PATH = `${PRESENTS_PATH}/my-registrations.ttl`;
+export const MY_REGISTRATIONS_PATH = `${PRESENTS_PATH}/registrations.ttl`;
 
 // Storage keys
 export const SOLID_STORAGE_KEY = 'giftApp.solidProfiles';
