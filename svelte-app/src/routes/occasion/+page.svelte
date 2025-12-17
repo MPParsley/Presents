@@ -2,7 +2,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
-	import { auth, isLoggedIn, webId, isAuthLoading } from '$lib/stores/auth';
+	import { isLoggedIn, webId, isAuthLoading } from '$lib/stores/auth';
 	import { t } from '$lib/i18n';
 	import SolidLogin from '$lib/components/SolidLogin.svelte';
 	import {
@@ -18,15 +18,26 @@
 		type Participant
 	} from '$lib/solid';
 
-	// State
-	let occasionUrl = $state<string | null>(null);
+	// Derived from URL - no state needed
+	let occasionUrl = $derived(
+		$page.url.searchParams.get('occasion') ||
+			($page.url.searchParams.has('code')
+				? sessionStorage.getItem('current_occasion_url')
+				: null)
+	);
+
+	// Async loaded data - needs state
 	let currentOccasion = $state<Occasion | null>(null);
 	let participants = $state<Participant[]>([]);
 	let myOccasions = $state<Array<{ name: string; url: string }>>([]);
-	let isLoading = $state(false);
-	let isAdmin = $state(false);
 	let isRegistered = $state(false);
+
+	// UI state
+	let isLoading = $state(false);
 	let error = $state<string | null>(null);
+
+	// Derived from loaded data
+	let isAdmin = $derived($webId !== null && currentOccasion?.adminWebId === $webId);
 
 	// Form state
 	let newOccasionName = $state('');
@@ -37,26 +48,13 @@
 	let editName = $state('');
 	let editDate = $state('');
 
-	// Watch URL params reactively (handles both initial load and navigation within page)
+	// Store occasion URL for OIDC redirect recovery
 	$effect(() => {
 		const urlParam = $page.url.searchParams.get('occasion');
-		const isOidcRedirect = $page.url.searchParams.has('code');
-
 		if (urlParam) {
-			// Direct link to occasion - use and store it
 			sessionStorage.setItem('current_occasion_url', urlParam);
-			occasionUrl = urlParam;
-		} else if (isOidcRedirect) {
-			// OIDC redirect - restore from sessionStorage if available
-			const stored = sessionStorage.getItem('current_occasion_url');
-			if (stored) {
-				occasionUrl = stored;
-			}
-		} else {
-			// Normal navigation to /occasion - clear storage and show overview
+		} else if (!$page.url.searchParams.has('code')) {
 			sessionStorage.removeItem('current_occasion_url');
-			occasionUrl = null;
-			currentOccasion = null;
 		}
 	});
 
@@ -64,6 +62,11 @@
 	$effect(() => {
 		if (occasionUrl && !$isAuthLoading) {
 			loadOccasion(occasionUrl);
+		} else if (!occasionUrl) {
+			// Clear data when no occasion selected
+			currentOccasion = null;
+			participants = [];
+			isRegistered = false;
 		}
 	});
 
@@ -77,35 +80,23 @@
 	async function loadOccasion(url: string) {
 		isLoading = true;
 		error = null;
-
-		// Reset state to prevent using stale data from previous occasion
 		currentOccasion = null;
 		participants = [];
-		isAdmin = false;
 		isRegistered = false;
 
 		try {
 			currentOccasion = await fetchOccasion(url);
-			isAdmin = $webId === currentOccasion.adminWebId;
 
-			if (isAdmin) {
-				// Admin can read all participants from their own pod
+			if ($webId === currentOccasion.adminWebId) {
 				participants = await fetchParticipants(currentOccasion.registrationsUrl);
 			} else if ($webId) {
-				// Non-admin: check own pod to see if registered
 				isRegistered = await checkMyRegistration(url);
 			}
 		} catch (e) {
 			const errorMessage = (e as Error).message;
-			// If occasion not found (404), clear stale sessionStorage and reset state
 			if (errorMessage.includes('404')) {
 				sessionStorage.removeItem('current_occasion_url');
-				occasionUrl = null;
-				currentOccasion = null;
-				// Load my occasions list instead
-				if ($webId) {
-					await loadMyOccasions();
-				}
+				goto(`${base}/occasion`, { replaceState: true });
 			} else {
 				error = $t('couldNotLoad') + ' ' + errorMessage;
 			}
@@ -116,7 +107,6 @@
 
 	async function loadMyOccasions() {
 		if (!$webId) return;
-
 		try {
 			myOccasions = await fetchMyOccasions($webId);
 		} catch (e) {
@@ -129,7 +119,6 @@
 			alert($t('enterOccasionName'));
 			return;
 		}
-
 		if (!$webId) {
 			alert($t('mustLogin'));
 			return;
@@ -151,16 +140,10 @@
 				adminWebId: $webId
 			});
 
-			// Clear form
 			newOccasionName = '';
 			newOccasionDate = '';
 
-			// Set occasion URL - the $effect will load the occasion data
-			sessionStorage.setItem('current_occasion_url', result.occasionUrl);
-			occasionUrl = result.occasionUrl;
-
-			// Update URL in browser
-			goto(`${base}/occasion?occasion=${encodeURIComponent(result.occasionUrl)}`, { replaceState: true });
+			goto(`${base}/occasion?occasion=${encodeURIComponent(result.occasionUrl)}`);
 		} catch (e) {
 			error = $t('couldNotCreate') + ' ' + (e as Error).message;
 		} finally {
@@ -220,8 +203,6 @@
 				date: editDate || null,
 				adminWebId: currentOccasion.adminWebId
 			});
-
-			// Reload occasion data
 			await loadOccasion(occasionUrl);
 			isEditing = false;
 		} catch (e) {
@@ -233,10 +214,7 @@
 
 	async function handleDelete() {
 		if (!occasionUrl) return;
-
-		if (!confirm($t('confirmDelete'))) {
-			return;
-		}
+		if (!confirm($t('confirmDelete'))) return;
 
 		isLoading = true;
 		error = null;
@@ -244,14 +222,7 @@
 		try {
 			await deleteOccasion(occasionUrl);
 			sessionStorage.removeItem('current_occasion_url');
-
-			// Reset state to show overview
-			occasionUrl = null;
-			currentOccasion = null;
-			participants = [];
-
-			// Reload my occasions list
-			await loadMyOccasions();
+			goto(`${base}/occasion`);
 		} catch (e) {
 			error = $t('couldNotDelete') + ' ' + (e as Error).message;
 		} finally {
@@ -259,8 +230,8 @@
 		}
 	}
 
-	function getShortWebId(webId: string): string {
-		return webId.replace('https://', '').replace('/profile/card#me', '');
+	function getShortWebId(id: string): string {
+		return id.replace('https://', '').replace('/profile/card#me', '');
 	}
 </script>
 
@@ -271,10 +242,8 @@
 {:else if error}
 	<div class="error">{error}</div>
 {:else if currentOccasion}
-	<!-- Viewing an occasion -->
 	<section class="card occasion-view">
 		{#if isEditing}
-			<!-- Edit form -->
 			<div class="edit-form">
 				<h3>{$t('editOccasion')}</h3>
 				<div class="form">
@@ -305,13 +274,11 @@
 		{/if}
 
 		{#if isAdmin && !isEditing}
-			<!-- Admin actions -->
 			<div class="admin-actions">
 				<button onclick={startEditing}>✏️ {$t('edit')}</button>
 				<button class="danger" onclick={handleDelete}>🗑️ {$t('delete')}</button>
 			</div>
 
-			<!-- Admin view -->
 			<div class="participants-section">
 				<h3>{$t('registeredParticipants')} ({participants.length})</h3>
 				{#if participants.length === 0}
@@ -334,7 +301,6 @@
 				<button onclick={copyShareLink}>{$t('copyLink')}</button>
 			</div>
 		{:else if $isLoggedIn && !isEditing}
-			<!-- Participant view -->
 			{#if isRegistered}
 				<div class="success">
 					<h3>{$t('youAreRegistered')}</h3>
@@ -352,7 +318,6 @@
 		{/if}
 	</section>
 {:else if $isLoggedIn}
-	<!-- No occasion selected - show create form and list -->
 	{#if myOccasions.length > 0}
 		<section class="card">
 			<h2>{$t('myOccasions')}</h2>
