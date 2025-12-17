@@ -236,7 +236,15 @@
 		try {
 			await deleteOccasion(occasionUrl);
 			sessionStorage.removeItem('current_occasion_url');
-			goto(`${base}/occasion`);
+
+			// Reset state to show overview
+			occasionUrl = null;
+			currentOccasion = null;
+			participants = [];
+			isLoading = false;
+
+			// Reload my occasions list
+			await loadMyOccasions();
 		} catch (e) {
 			error = $t('couldNotDelete') + ' ' + (e as Error).message;
 			isLoading = false;
