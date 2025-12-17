@@ -72,6 +72,21 @@ function generateTurtle() {
     turtle += '    rdfs:domain schema:GiveAction ;\n';
     turtle += '    rdfs:range seg:Edition .\n';
     turtle += '\n';
+    turtle += 'seg:hasWishlist rdf:type rdf:Property ;\n';
+    turtle += '    rdfs:label "hasWishlist" ;\n';
+    turtle += '    rdfs:comment "Links a Person to their wishlist stored in a Solid Pod." ;\n';
+    turtle += '    rdfs:domain foaf:Person ;\n';
+    turtle += '    rdfs:range rdfs:Resource .\n';
+    turtle += '\n';
+    turtle += 'seg:priority rdf:type rdf:Property ;\n';
+    turtle += '    rdfs:label "priority" ;\n';
+    turtle += '    rdfs:comment "Priority level of a wishlist item (1-5)." ;\n';
+    turtle += '    rdfs:domain schema:ListItem ;\n';
+    turtle += '    rdfs:range xsd:integer .\n';
+    turtle += '\n';
+
+    // Get Solid profiles if available
+    const solidProfiles = typeof getSolidProfiles === 'function' ? getSolidProfiles() : {};
 
     // Export persons
     turtle += '# ===========================================\n';
@@ -81,8 +96,18 @@ function generateTurtle() {
 
     persons.forEach(person => {
         turtle += `<person/${person.id}> rdf:type foaf:Person ;\n`;
-        turtle += `    foaf:name "${escapeTurtleString(person.name)}" .\n`;
-        turtle += '\n';
+        turtle += `    foaf:name "${escapeTurtleString(person.name)}"`;
+
+        // Add Solid WebID and Wishlist URL if linked
+        const solidProfile = solidProfiles[person.id];
+        if (solidProfile && solidProfile.webId) {
+            turtle += ` ;\n    foaf:account <${escapeTurtleString(solidProfile.webId)}>`;
+            if (solidProfile.wishlistUrl) {
+                turtle += ` ;\n    seg:hasWishlist <${escapeTurtleString(solidProfile.wishlistUrl)}>`;
+            }
+        }
+
+        turtle += ' .\n\n';
     });
 
     // Export groups with members

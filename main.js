@@ -136,6 +136,15 @@ function deletePerson(id) {
     inclusions = inclusions.filter(i => i.giverId !== id && i.recipientId !== id);
     saveData(STORAGE_KEYS.INCLUSIONS, inclusions);
 
+    // Remove Solid profile link if exists
+    if (typeof getSolidProfiles === 'function' && typeof saveSolidProfiles === 'function') {
+        const solidProfiles = getSolidProfiles();
+        if (solidProfiles[id]) {
+            delete solidProfiles[id];
+            saveSolidProfiles(solidProfiles);
+        }
+    }
+
     renderPersons();
     renderGroupsUI();
     renderExclusions();
@@ -168,13 +177,29 @@ function renderPersons() {
         });
     });
 
+    // Get Solid profiles for badge display
+    const solidProfiles = typeof getSolidProfiles === 'function' ? getSolidProfiles() : {};
+
     list.innerHTML = sortedPersons.map(p => {
         const group = personGroupMap[p.id];
         const groupName = group ? group.name : 'No group';
+        const hasSolid = solidProfiles[p.id] && solidProfiles[p.id].webId;
+
+        // Solid badge/button
+        let solidBadgeHtml = '';
+        if (hasSolid) {
+            solidBadgeHtml = `<span class="solid-badge linked" title="${escapeHtml(solidProfiles[p.id].webId)}">Solid</span>`;
+        }
+
         return `
             <li id="person-item-${p.id}">
-                <span class="item-name">${escapeHtml(p.name)} <small class="group-tag">(${escapeHtml(groupName)})</small></span>
+                <span class="item-name">${escapeHtml(p.name)} <small class="group-tag">(${escapeHtml(groupName)})</small>${solidBadgeHtml}</span>
                 <span class="item-buttons">
+                    ${hasSolid
+                        ? `<button class="small-btn" onclick="showPersonWishlist('${p.id}')" title="Bekijk wishlist">Wishlist</button>
+                           <button class="small-btn" onclick="unlinkPersonFromSolid('${p.id}')" title="Ontkoppel Solid">Ontkoppel</button>`
+                        : `<button class="small-btn" onclick="linkCurrentUserToPerson('${p.id}')" title="Koppel je Solid account">Koppel Solid</button>`
+                    }
                     <button class="small-btn" onclick="editPerson('${p.id}')">Edit</button>
                     <button class="small-btn danger-btn" onclick="deletePerson('${p.id}')">Delete</button>
                 </span>
@@ -954,6 +979,11 @@ function showAssignments() {
         });
     });
 
+    // Get Solid profiles for wishlist buttons
+    const solidProfiles = typeof getSolidProfiles === 'function' ? getSolidProfiles() : {};
+    const occasions = getOccasions();
+    const occasion = occasions.find(o => o.id === edition.occasionId);
+
     list.innerHTML = edition.assignments.map(a => {
         const giver = persons.find(p => p.id === a.giverId);
         const recipient = persons.find(p => p.id === a.recipientId);
@@ -962,11 +992,32 @@ function showAssignments() {
         const giverGroup = personToGroupName[a.giverId] || 'No group';
         const recipientGroup = personToGroupName[a.recipientId] || 'No group';
 
+        // Check if recipient has a Solid wishlist
+        const recipientHasSolid = solidProfiles[a.recipientId] && solidProfiles[a.recipientId].webId;
+        const wishlistBtn = recipientHasSolid
+            ? `<button class="small-btn wishlist-btn" onclick="showPersonWishlist('${a.recipientId}')">Wishlist</button>`
+            : '';
+
+        // Create reveal link data
+        const revealData = {
+            giverName: giverName,
+            giverId: a.giverId,
+            recipientName: recipientName,
+            recipientId: a.recipientId,
+            occasionName: occasion ? occasion.name : '',
+            occasionDate: occasion ? occasion.date : null,
+            recipientWebId: solidProfiles[a.recipientId]?.webId || null,
+            recipientWishlistUrl: solidProfiles[a.recipientId]?.wishlistUrl || null
+        };
+        const encodedData = btoa(JSON.stringify(revealData));
+
         return `
             <li>
                 <span>${escapeHtml(giverName)} <small class="group-tag">(${escapeHtml(giverGroup)})</small></span>
                 <span class="arrow">→</span>
                 <span>${escapeHtml(recipientName)} <small class="group-tag">(${escapeHtml(recipientGroup)})</small></span>
+                ${wishlistBtn}
+                <button class="small-btn" onclick="copyRevealLink('${encodedData}')" title="Kopieer reveal link voor ${escapeHtml(giverName)}">Link</button>
             </li>
         `;
     }).join('');
@@ -1298,15 +1349,19 @@ function updatePersonGroupDropdown() {
  */
 function exportDataJSON() {
     try {
+        // Get Solid profiles if available
+        const solidProfiles = typeof getSolidProfiles === 'function' ? getSolidProfiles() : {};
+
         const data = {
-            version: 1,
+            version: 2,
             exportedAt: new Date().toISOString(),
             persons: getPersons(),
             groups: getGroups(),
             occasions: getOccasions(),
             editions: getEditions(),
             exclusions: getExclusions(),
-            inclusions: getInclusions()
+            inclusions: getInclusions(),
+            solidProfiles: solidProfiles
         };
 
         const json = JSON.stringify(data, null, 2);
@@ -1369,6 +1424,10 @@ function importDataJSON(event) {
                 saveData(STORAGE_KEYS.EDITIONS, data.editions);
                 saveData(STORAGE_KEYS.EXCLUSIONS, data.exclusions || []);
                 saveData(STORAGE_KEYS.INCLUSIONS, data.inclusions || []);
+                // Import Solid profiles if present and function exists
+                if (data.solidProfiles && typeof saveSolidProfiles === 'function') {
+                    saveSolidProfiles(data.solidProfiles);
+                }
             } else {
                 // Merge data (add new items, skip duplicates by ID)
                 const existingPersons = getPersons();
@@ -1427,6 +1486,17 @@ function importDataJSON(event) {
                 saveData(STORAGE_KEYS.EDITIONS, existingEditions);
                 saveData(STORAGE_KEYS.EXCLUSIONS, existingExclusions);
                 saveData(STORAGE_KEYS.INCLUSIONS, existingInclusions);
+
+                // Merge Solid profiles if present
+                if (data.solidProfiles && typeof getSolidProfiles === 'function' && typeof saveSolidProfiles === 'function') {
+                    const existingSolidProfiles = getSolidProfiles();
+                    Object.keys(data.solidProfiles).forEach(personId => {
+                        if (!existingSolidProfiles[personId]) {
+                            existingSolidProfiles[personId] = data.solidProfiles[personId];
+                        }
+                    });
+                    saveSolidProfiles(existingSolidProfiles);
+                }
             }
 
             // Refresh UI
@@ -1476,6 +1546,9 @@ function resetAllData() {
     localStorage.removeItem(STORAGE_KEYS.EDITIONS);
     localStorage.removeItem(STORAGE_KEYS.EXCLUSIONS);
     localStorage.removeItem(STORAGE_KEYS.INCLUSIONS);
+    // Also clear Solid profiles
+    localStorage.removeItem('giftApp.solidProfiles');
+    localStorage.removeItem('giftApp.wishlistCache');
 
     // Re-render everything
     renderPersons();
@@ -1503,6 +1576,27 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+/**
+ * Copy reveal link to clipboard
+ */
+function copyRevealLink(encodedData) {
+    const baseUrl = window.location.href.replace(/\/[^\/]*$/, '/');
+    const revealUrl = baseUrl + 'reveal.html?data=' + encodedData;
+
+    navigator.clipboard.writeText(revealUrl).then(() => {
+        alert('Link gekopieerd naar klembord!\n\nDeel deze link met de deelnemer.');
+    }).catch(err => {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = revealUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('Link gekopieerd naar klembord!\n\nDeel deze link met de deelnemer.');
+    });
 }
 
 // ===========================================
