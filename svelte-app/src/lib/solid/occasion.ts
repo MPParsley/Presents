@@ -7,7 +7,7 @@ import {
 	type Occasion,
 	type Participant
 } from './turtle';
-import { OCCASIONS_PATH } from './constants';
+import { OCCASIONS_PATH, MY_REGISTRATIONS_PATH } from './constants';
 
 export interface OccasionData {
 	id: string;
@@ -52,16 +52,18 @@ export async function createOccasion(
 		body: 'placeholder'
 	});
 
-	// Set ACL for public write
-	await setPublicWriteACL(registrationsUrl, session.info.webId);
+	// Set ACL for registrations (append-only for authenticated users)
+	await setRegistrationsACL(registrationsUrl, session.info.webId);
 
 	return { occasionUrl, registrationsUrl };
 }
 
 /**
- * Set public write ACL on a container
+ * Set ACL on registrations container:
+ * - Owner: full control (Read, Write, Control)
+ * - Authenticated users: Append only (no Read)
  */
-async function setPublicWriteACL(containerUrl: string, ownerWebId: string): Promise<void> {
+async function setRegistrationsACL(containerUrl: string, ownerWebId: string): Promise<void> {
 	const session = auth.getSession();
 	const aclUrl = containerUrl + '.acl';
 
@@ -79,7 +81,7 @@ async function setPublicWriteACL(containerUrl: string, ownerWebId: string): Prom
     acl:agentClass acl:AuthenticatedAgent ;
     acl:accessTo <./> ;
     acl:default <./> ;
-    acl:mode acl:Read, acl:Append .
+    acl:mode acl:Append .
 `;
 
 	const response = await session.fetch(aclUrl, {
@@ -239,19 +241,22 @@ export async function fetchMyOccasions(
 
 /**
  * Register a participant for an occasion
+ * - Writes registration to admin's pod (append-only)
+ * - Also stores registration in participant's own pod (for checking)
  */
 export async function registerParticipant(
 	registrationsUrl: string,
-	participantWebId: string
+	participantWebId: string,
+	occasionUrl: string
 ): Promise<{ registrationUrl: string }> {
 	const session = auth.getSession();
 	if (!session.info.isLoggedIn) {
 		throw new Error('Not logged in');
 	}
 
-	// Check if already registered
-	const existingParticipants = await fetchParticipants(registrationsUrl);
-	if (existingParticipants.some((p) => p.webId === participantWebId)) {
+	// Check if already registered (by checking own pod)
+	const alreadyRegistered = await checkMyRegistration(occasionUrl);
+	if (alreadyRegistered) {
 		throw new Error('Je bent al ingeschreven voor deze gelegenheid');
 	}
 
@@ -267,7 +272,7 @@ export async function registerParticipant(
     seg:registeredAt "${new Date().toISOString()}" .
 `;
 
-	// Use POST to append to container (works with acl:Append permission)
+	// Use POST to append to admin's container (works with acl:Append permission)
 	const response = await session.fetch(registrationsUrl, {
 		method: 'POST',
 		headers: {
@@ -284,6 +289,9 @@ export async function registerParticipant(
 
 	// Get the actual URL from Location header, or construct it
 	const registrationUrl = response.headers.get('Location') || (registrationsUrl + regId + '.ttl');
+
+	// Also store in participant's own pod (so they can check their registration status)
+	await storeMyRegistration(occasionUrl);
 
 	return { registrationUrl };
 }
@@ -349,4 +357,122 @@ export async function fetchParticipants(registrationsUrl: string): Promise<Parti
 	}
 
 	return Array.from(uniqueByWebId.values());
+}
+
+/**
+ * Store registration in participant's own pod
+ * This allows the participant to know which occasions they registered for
+ */
+async function storeMyRegistration(occasionUrl: string): Promise<void> {
+	const session = auth.getSession();
+	if (!session.info.isLoggedIn || !session.info.webId) {
+		throw new Error('Not logged in');
+	}
+
+	const podBase = getPodBaseUrl(session.info.webId);
+	const myRegistrationsUrl = `${podBase}${MY_REGISTRATIONS_PATH}`;
+
+	// Try to fetch existing registrations
+	let existingTurtle = '';
+	try {
+		const response = await session.fetch(myRegistrationsUrl, {
+			headers: { Accept: 'text/turtle' }
+		});
+		if (response.ok) {
+			existingTurtle = await response.text();
+		}
+	} catch {
+		// File doesn't exist yet, that's fine
+	}
+
+	// Check if already registered for this occasion
+	if (existingTurtle.includes(`<${occasionUrl}>`)) {
+		return; // Already registered
+	}
+
+	// Add new registration
+	const newEntry = `
+<#reg-${Date.now()}> a <https://segersrosseel.be/ns/gift#MyRegistration> ;
+    <https://segersrosseel.be/ns/gift#occasionUrl> <${occasionUrl}> ;
+    <https://segersrosseel.be/ns/gift#registeredAt> "${new Date().toISOString()}" .
+`;
+
+	const updatedTurtle = existingTurtle
+		? existingTurtle + newEntry
+		: `@prefix seg: <https://segersrosseel.be/ns/gift#> .\n${newEntry}`;
+
+	const response = await session.fetch(myRegistrationsUrl, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'text/turtle' },
+		body: updatedTurtle
+	});
+
+	if (!response.ok) {
+		console.warn('Could not store registration in own pod:', response.status);
+	}
+}
+
+/**
+ * Check if current user is registered for an occasion (by checking their own pod)
+ */
+export async function checkMyRegistration(occasionUrl: string): Promise<boolean> {
+	const session = auth.getSession();
+	if (!session.info.isLoggedIn || !session.info.webId) {
+		return false;
+	}
+
+	const podBase = getPodBaseUrl(session.info.webId);
+	const myRegistrationsUrl = `${podBase}${MY_REGISTRATIONS_PATH}`;
+
+	try {
+		const response = await session.fetch(myRegistrationsUrl, {
+			headers: { Accept: 'text/turtle' }
+		});
+
+		if (!response.ok) {
+			return false;
+		}
+
+		const turtle = await response.text();
+		return turtle.includes(`<${occasionUrl}>`);
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Get all occasions the current user is registered for
+ */
+export async function getMyRegistrations(): Promise<string[]> {
+	const session = auth.getSession();
+	if (!session.info.isLoggedIn || !session.info.webId) {
+		return [];
+	}
+
+	const podBase = getPodBaseUrl(session.info.webId);
+	const myRegistrationsUrl = `${podBase}${MY_REGISTRATIONS_PATH}`;
+
+	try {
+		const response = await session.fetch(myRegistrationsUrl, {
+			headers: { Accept: 'text/turtle' }
+		});
+
+		if (!response.ok) {
+			return [];
+		}
+
+		const turtle = await response.text();
+		const occasionUrls: string[] = [];
+
+		// Parse occasion URLs from the turtle
+		const regex = /seg:occasionUrl\s+<([^>]+)>/g;
+		let match;
+		while ((match = regex.exec(turtle)) !== null) {
+			occasionUrls.push(match[1]);
+		}
+
+		return occasionUrls;
+	} catch {
+		return [];
+	}
 }

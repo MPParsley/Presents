@@ -11,6 +11,7 @@
 		fetchMyOccasions,
 		registerParticipant,
 		fetchParticipants,
+		checkMyRegistration,
 		updateOccasion,
 		deleteOccasion,
 		type Occasion,
@@ -82,10 +83,11 @@
 			isAdmin = $webId === currentOccasion.adminWebId;
 
 			if (isAdmin) {
+				// Admin can read all participants from their own pod
 				participants = await fetchParticipants(currentOccasion.registrationsUrl);
 			} else if ($webId) {
-				const allParticipants = await fetchParticipants(currentOccasion.registrationsUrl);
-				isRegistered = allParticipants.some((p) => p.webId === $webId);
+				// Non-admin: check own pod to see if registered
+				isRegistered = await checkMyRegistration(url);
 			}
 		} catch (e) {
 			const errorMessage = (e as Error).message;
@@ -161,13 +163,13 @@
 	}
 
 	async function handleRegister() {
-		if (!$webId || !currentOccasion) return;
+		if (!$webId || !currentOccasion || !occasionUrl) return;
 
 		isLoading = true;
 		error = null;
 
 		try {
-			await registerParticipant(currentOccasion.registrationsUrl, $webId);
+			await registerParticipant(currentOccasion.registrationsUrl, $webId, occasionUrl);
 			isRegistered = true;
 		} catch (e) {
 			error = $t('couldNotRegister') + ' ' + (e as Error).message;
