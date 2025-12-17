@@ -90,10 +90,14 @@
 		try {
 			currentOccasion = await fetchOccasion(url);
 
-			if ($webId === currentOccasion.adminWebId) {
-				participants = await fetchParticipants(currentOccasion.registrationsUrl);
-			} else if ($webId) {
+			if ($webId) {
+				// Always check if current user is registered
 				isRegistered = await checkMyRegistration(url);
+
+				// Admin also gets participants list
+				if ($webId === currentOccasion.adminWebId) {
+					participants = await fetchParticipants(currentOccasion.registrationsUrl);
+				}
 			}
 		} catch (e) {
 			const errorMessage = (e as Error).message;
@@ -306,6 +310,19 @@
 				<button onclick={startEditing}>✏️ {$t('edit')}</button>
 				<button class="danger" onclick={handleDelete}>🗑️ {$t('delete')}</button>
 			</div>
+
+			{#if isRegistered}
+				<div class="success">
+					<h3>{$t('youAreRegistered')}</h3>
+					<p>{$t('participatingIn')} {currentOccasion.name}.</p>
+					<p><a href="{base}/wishlist">{$t('manageWishlist')}</a></p>
+				</div>
+			{:else}
+				<div class="register-section">
+					<p>{$t('registerAsAdmin')}</p>
+					<button class="primary" onclick={handleRegister}>{$t('register')}</button>
+				</div>
+			{/if}
 
 			<div class="participants-section">
 				<h3>{$t('registeredParticipants')} ({participants.length})</h3>
